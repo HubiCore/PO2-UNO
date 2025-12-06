@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<AnchorPane prefHeight="1920.0" prefWidth="1080.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SampleController">
+   <children>
+      <Button layoutX="840.0" layoutY="400.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="200.0" text="Button" />
+      <Button layoutX="840.0" layoutY="500.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="200.0" text="Button" />
+      <Button layoutX="840.0" layoutY="600.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="200.0" text="Sraka" />
+       <Button layoutX="840.0" layoutY="700.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="200.0" text="Button" />
+       <Button layoutX="840.0" layoutY="800.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="200.0" text="Button" />
+       <Button layoutX="840.0" layoutY="900.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="200.0" text="Sraka" />
+       <Button layoutX="840.0" layoutY="1000.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="200.0" text="Sraka" />
+   </children>
+</AnchorPane>

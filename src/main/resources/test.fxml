@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml/1"
+      xmlns="http://javafx.com/javafx/17"
+      fx:controller="org.example.SampleController"
+      spacing="10" alignment="CENTER">
+
+    <Label text="Hello, FXML!" />
+    <TextField fx:id="nameField" promptText="Enter your name" />
+    <Button fx:id="submitButton" text="Submit" onAction="#handleSubmit" />
+    <Label fx:id="resultLabel" />
+
+</VBox>
