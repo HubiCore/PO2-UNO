@@ -1,2 +1,4 @@
 # PO2-UNO
-# PO2-UNO
+Projekt UNO na Programowanie Obiektowe 2
+
+Moje [prawa autorskie](https://github.com/user-attachments/assets/66cbaefc-b703-40c6-8d52-c7cf3570e3bb) 
