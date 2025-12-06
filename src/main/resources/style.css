@@ -1,9 +1,3 @@
-/*
-Source - https://stackoverflow.com/q
-Posted by syscreat, modified by community. See post 'Timeline' for change history
-Retrieved 2025-12-06, License - CC BY-SA 4.0
-*/
-
 @font-face {
     font-family: 'Fake Receipt';
     src: url('assets/fake_receipt.otf');
@@ -15,7 +9,6 @@ Retrieved 2025-12-06, License - CC BY-SA 4.0
     -fx-font-size: 60px;
 }
 
-/* Styling buttons */
 .button {
     -fx-background-color: transparent;
     -fx-text-fill: white;
@@ -27,15 +20,5 @@ Retrieved 2025-12-06, License - CC BY-SA 4.0
 }
 
 .button:hover {
-    -fx-text-fill: blue;
+    -fx-text-fill: #858585;
 }
-
-/* Custom style class */
-/*
-.my-label {
-    -fx-text-fill: #333;
-    -fx-font-size: 16px;
-    -fx-font-weight: bold;
-}
-
- */

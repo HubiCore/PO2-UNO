@@ -10,12 +10,9 @@ public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // Load FXML file
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/main_menu.fxml"));
         Parent root = loader.load();
-
-        SampleController controller = loader.getController();
-
+        SceneController controller = loader.getController();
         Scene scene = new Scene(root, 1920, 1080);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         primaryStage.setTitle("FXML Example");

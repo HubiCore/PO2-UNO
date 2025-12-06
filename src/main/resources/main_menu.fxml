@@ -4,16 +4,16 @@
 <?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 
-<AnchorPane prefHeight="1920.0" prefWidth="1080.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SampleController">
+<AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SceneController">
    <children>
-      <Button layoutX="840.0" layoutY="400.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Button" />
-      <Button layoutX="840.0" layoutY="500.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Button" />
-      <Button layoutX="840.0" layoutY="600.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Sraka" />
-       <Button layoutX="840.0" layoutY="700.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Button" />
-       <Button layoutX="840.0" layoutY="800.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Button" />
-       <Button layoutX="840.0" layoutY="900.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Sraka" />
+      <Button layoutX="840.0" layoutY="400.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Start" />
+      <Button layoutX="824.0" layoutY="500.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="185.0" text="Ustawienia" onAction="#switch_to_settings"/>
+      <Button layoutX="800.0" layoutY="600.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="230.0" text="Tabela Wyników" />
+       <Button layoutX="800.0" layoutY="700.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="230.0" text="Personalizacja" />
+       <Button layoutX="840.0" layoutY="800.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Autorzy" />
+       <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="230.0" text="Wypierdalaj" onAction="#turn_off"/>
        <Button layoutX="840.0" layoutY="1000.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Sraka" />
-      <ImageView layoutX="840.0" layoutY="200.0" fitHeight="185.0" fitWidth="300.0" pickOnBounds="true" preserveRatio="true">
+      <ImageView fitHeight="170.0" fitWidth="120.0" layoutX="855.0" layoutY="210.0" pickOnBounds="true" preserveRatio="true">
           <image>
               <Image url="@assets/textures/card_template.png" />
           </image>
