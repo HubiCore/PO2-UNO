@@ -1,0 +1,41 @@
+/*
+Source - https://stackoverflow.com/q
+Posted by syscreat, modified by community. See post 'Timeline' for change history
+Retrieved 2025-12-06, License - CC BY-SA 4.0
+*/
+
+@font-face {
+    font-family: 'Fake Receipt';
+    src: url('assets/fake_receipt.otf');
+}
+
+.root {
+    -fx-background-color: #000000;
+    -fx-font-family: "Fake Receipt";
+    -fx-font-size: 60px;
+}
+
+/* Styling buttons */
+.button {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-padding: 10px 20px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-font-family: "Fake Receipt";
+    -fx-font-size: 30px;
+}
+
+.button:hover {
+    -fx-text-fill: blue;
+}
+
+/* Custom style class */
+/*
+.my-label {
+    -fx-text-fill: #333;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+ */

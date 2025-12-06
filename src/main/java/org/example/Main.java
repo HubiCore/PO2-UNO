@@ -14,11 +14,10 @@ public class Main extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/main_menu.fxml"));
         Parent root = loader.load();
 
-        // Optional: Get controller instance
         SampleController controller = loader.getController();
 
-        // Create scene and show
         Scene scene = new Scene(root, 1920, 1080);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         primaryStage.setTitle("FXML Example");
         primaryStage.setScene(scene);
         primaryStage.setFullScreen(true);
