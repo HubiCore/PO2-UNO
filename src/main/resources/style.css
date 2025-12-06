@@ -23,7 +23,7 @@ Retrieved 2025-12-06, License - CC BY-SA 4.0
     -fx-border-radius: 5px;
     -fx-background-radius: 5px;
     -fx-font-family: "Fake Receipt";
-    -fx-font-size: 30px;
+    -fx-font-size: 20px;
 }
 
 .button:hover {
