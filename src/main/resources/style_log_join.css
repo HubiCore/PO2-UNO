@@ -1,0 +1,31 @@
+@font-face {
+    font-family: 'Fake Receipt';
+    src: url('assets/fake_receipt.otf');
+}
+
+.root {
+    -fx-background-color: #000000;
+    -fx-font-family: "Fake Receipt";
+    -fx-font-size: 60px;
+}
+
+.button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #2eff00;
+    -fx-padding: 10px 20px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-font-family: "Fake Receipt";
+    -fx-font-size: 20px;
+}
+.text-field{
+    -fx-background-color: transparent;
+    -fx-text-fill: #2eff00;
+    -fx-border-color: #2eff00;
+    -fx-border-width: 4px;
+    -fx-border-radius: 8px;
+
+}
+.button:hover {
+    -fx-text-fill: #858585;
+}

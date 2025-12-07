@@ -17,18 +17,17 @@ public class SceneController {
     private Scene scene;
     private Parent root;
 
-    //fullscreen nie działa
     public void switch_to_main_menu(ActionEvent event) throws IOException {
         System.out.println("switch_to_main_menu");
         root = FXMLLoader.load(getClass().getResource("/main_menu.fxml"));
         stage = (Stage)((Node)event.getSource()).getScene().getWindow();
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        stage.setFullScreen(true);
         stage.setScene(scene);
+        stage.setFullScreen(true);
         stage.show();
     }
-    //fullscreen nie działa D:
+    //fullscreen działa :D
 
     public void switch_to_settings(ActionEvent event) throws IOException {
         System.out.println("Przechodzenie do ustawien");
@@ -36,8 +35,30 @@ public class SceneController {
         stage = (Stage)((Node)event.getSource()).getScene().getWindow();
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        stage.setFullScreen(true); //będziesz dotykany :3
         stage.setScene(scene);
+        stage.setFullScreen(true);
+        stage.show();
+    }
+
+    public void switch_to_login(ActionEvent event) throws IOException {
+        System.out.println("Przechodzenie do logowania");
+        Parent root = FXMLLoader.load(getClass().getResource("/login.fxml"));
+        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+        scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/style_log_join.css").toExternalForm());
+        stage.setScene(scene);
+        stage.setFullScreen(true);
+        stage.show();
+    }
+
+    public void switch_to_tab_wynik(ActionEvent event) throws IOException {
+        System.out.println("Przechodzenie do logowania");
+        Parent root = FXMLLoader.load(getClass().getResource("/tab_wyn.fxml"));
+        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+        scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+        stage.setScene(scene);
+        stage.setFullScreen(true);
         stage.show();
     }
     public void turn_off(ActionEvent event) throws IOException {

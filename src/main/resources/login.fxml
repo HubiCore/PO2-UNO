@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+
+<AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SceneController">
+   <children>
+      <TextField layoutX="151.0" layoutY="115.0" />
+      <Button layoutX="151.0" layoutY="240.0" mnemonicParsing="false" text="Button" />
+   </children>
+</AnchorPane>
