@@ -1,20 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.media.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
 
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.image.Image?>
+
 <AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SceneController">
    <children>
-      <TextField layoutX="151.0" layoutY="115.0" />
-      <Button layoutX="151.0" layoutY="240.0" mnemonicParsing="false" text="Button" />
+      <ImageView layoutX="1" layoutY="1" fitHeight="150.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
+      <ImageView layoutX="1" layoutY="1" fitHeight="150.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
+      <ImageView layoutX="1" layoutY="1" fitHeight="150.0" fitWidth="200.0" pickOnBounds="true" preserveRatio="true" />
        <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
-       <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="1600.0" layoutY="30.0" pickOnBounds="true" preserveRatio="true">
-       <image>
-           <Image url="@assets/textures/tenor.gif" />
-       </image>
-   </ImageView>
    </children>
 </AnchorPane>

@@ -4,8 +4,9 @@
 <?import javafx.scene.layout.*?>
 
 
-<AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SampleController">
+<AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SceneController">
    <children>
       <TextArea prefHeight="200.0" prefWidth="200.0" text="siema siema kurwa witam" />
    </children>
+    <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
 </AnchorPane>

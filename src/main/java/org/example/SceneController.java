@@ -52,7 +52,7 @@ public class SceneController {
     }
 
     public void switch_to_tab_wynik(ActionEvent event) throws IOException {
-        System.out.println("Przechodzenie do logowania");
+        System.out.println("Przechodzenie do tabeli wyników");
         Parent root = FXMLLoader.load(getClass().getResource("/tab_wyn.fxml"));
         stage = (Stage)((Node)event.getSource()).getScene().getWindow();
         scene = new Scene(root);
@@ -61,6 +61,18 @@ public class SceneController {
         stage.setFullScreen(true);
         stage.show();
     }
+
+    public void switch_to_autorzy(ActionEvent event) throws IOException {
+        System.out.println("Przechodzenie do autorów");
+        Parent root = FXMLLoader.load(getClass().getResource("/autorzy.fxml"));
+        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+        scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+        stage.setScene(scene);
+        stage.setFullScreen(true);
+        stage.show();
+    }
+
     public void turn_off(ActionEvent event) throws IOException {
         Platform.exit();
     }
