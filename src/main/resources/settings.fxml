@@ -2,11 +2,17 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
+<?import javafx.scene.text.*?>
 
 <AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SceneController">
-   <children>
-      <TextArea prefHeight="200.0" prefWidth="200.0" text="siema siema kurwa witam" />
-   </children>
+
     <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
+   <Slider layoutX="820" layoutY="300" />
+    <TextArea fx:id="myTextArea" editable="false" focusTraversable="false" layoutX="815" layoutY="200" mouseTransparent="true" prefHeight="50" prefWidth="300" styleClass="transparent-textarea" text="Głośność dźwięków" wrapText="true">
+    </TextArea>
+
+   <TextArea fx:id="textArea2" editable="false" focusTraversable="false" layoutX="815" layoutY="500" mouseTransparent="true" prefHeight="50" prefWidth="300" styleClass="transparent-textarea" text="Głośność dźwięków" wrapText="true">
+   </TextArea>
+    <Slider layoutX="820" layoutY="600" />
+    <accessibleText>temp</accessibleText>
 </AnchorPane>

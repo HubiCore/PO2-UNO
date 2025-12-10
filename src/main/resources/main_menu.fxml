@@ -11,8 +11,7 @@
       <Button layoutX="800.0" layoutY="600.0" mnemonicParsing="false" onAction="#switch_to_tab_wynik" prefHeight="100.0" prefWidth="230.0" text="Tabela Wyników" />
        <Button layoutX="800.0" layoutY="700.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="230.0" text="Personalizacja" />
        <Button layoutX="840.0" layoutY="800.0" mnemonicParsing="false" onAction="#switch_to_autorzy" prefHeight="100.0" prefWidth="150.0" text="Autorzy" />
-       <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#turn_off" prefHeight="100.0" prefWidth="230.0" text="Wypierdalaj" />
-       <Button layoutX="840.0" layoutY="1000.0" mnemonicParsing="false" prefHeight="100.0" prefWidth="150.0" text="Sraka" />
+       <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#turn_off" prefHeight="100.0" prefWidth="230.0" text="Wyjdź" />
       <ImageView fitHeight="170.0" fitWidth="120.0" layoutX="855.0" layoutY="210.0" pickOnBounds="true" preserveRatio="true">
           <image>
               <Image url="@assets/textures/card_template.png" />

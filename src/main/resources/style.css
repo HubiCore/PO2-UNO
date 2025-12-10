@@ -22,3 +22,31 @@
 .button:hover {
     -fx-text-fill: #858585;
 }
+
+.text-area {
+    -fx-background-color: transparent;
+    -fx-text-color: white;
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+}
+
+.text-area .scroll-pane {
+    -fx-background-color: transparent;
+    -fx-text-color: white;
+}
+
+.text-area .scroll-pane .viewport{
+    -fx-background-color: transparent;
+    -fx-text-color: white;
+}
+
+
+.text-area .scroll-pane .content{
+    -fx-background-color: transparent;
+    -fx-text-color: white;
+}
+.text-field{
+    -fx-background-color: transparent;
+    -fx-text-color: white;
+    -fx-font-weight: bold;
+}
