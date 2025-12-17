@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.UnoController"
+            style="-fx-background-image: url('/assets/textures/Tlo_rozgrywka.png');"
+            prefWidth="900" prefHeight="600">
+
+    <!-- Środek - Stół z kartą -->
+    <center>
+        <VBox alignment="CENTER" spacing="20">
+            <Label fx:id="instrukcja"
+                   text="Kliknij kartę, aby ją zagrać"
+                   style="-fx-text-fill: white; -fx-font-size: 16px;"/>
+
+            <StackPane fx:id="stol"
+                       minWidth="120" minHeight="180"
+                       maxWidth="120" maxHeight="180"
+                       alignment="CENTER"/>
+        </VBox>
+    </center>
+
+    <!-- Dół - Ręka gracza -->
+    <bottom>
+        <HBox fx:id="rekaGracza"
+              alignment="CENTER"
+              spacing="10">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+        </HBox>
+    </bottom>
+
+</BorderPane>

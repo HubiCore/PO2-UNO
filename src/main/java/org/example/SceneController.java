@@ -10,7 +10,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import static java.lang.System.exit;
+
 
 public class SceneController {
     private Stage stage;
@@ -27,7 +27,6 @@ public class SceneController {
         stage.setFullScreen(true);
         stage.show();
     }
-    //fullscreen działa :D
 
     public void switch_to_settings(ActionEvent event) throws IOException {
         System.out.println("Przechodzenie do ustawien");
@@ -71,6 +70,23 @@ public class SceneController {
         stage.setScene(scene);
         stage.setFullScreen(true);
         stage.show();
+    }
+
+    public void switch_to_game(ActionEvent event) throws IOException {
+        System.out.println("Przechodzenie do gry");
+
+        // POPRAWKA: Użyj FXMLLoader z kontrolerem
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/uno_game.fxml"));
+        Parent root = loader.load(); // To automatycznie wywołuje initialize() w kontrolerze
+
+        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+        scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+        stage.setScene(scene);
+        stage.setFullScreen(true);
+        stage.show();
+
+        System.out.println("Gra załadowana!");
     }
 
     public void turn_off(ActionEvent event) throws IOException {
