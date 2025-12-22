@@ -10,8 +10,25 @@
 <BorderPane xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="org.example.UnoController"
-            style="-fx-background-image: url('/assets/textures/Tlo_rozgrywka.png');"
-            prefWidth="900" prefHeight="600">
+            stylesheets="/table.css"
+            prefWidth="1920" prefHeight="1080">
+
+    <!-- Góra - Przeciwnik -->
+    <top>
+        <VBox alignment="CENTER" spacing="10">
+            <padding>
+                <Insets top="20" right="20" bottom="10" left="20"/>
+            </padding>
+
+            <Label fx:id="labelPrzeciwnik"
+                   text="Przeciwnik - 7 kart"
+                   style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+
+            <HBox fx:id="rekaPrzeciwnika"
+                  alignment="CENTER"
+                  spacing="5.0"/>
+        </VBox>
+    </top>
 
     <!-- Środek - Stół z kartą -->
     <center>
@@ -27,15 +44,21 @@
         </VBox>
     </center>
 
-    <!-- Dół - Ręka gracza -->
+    <!-- Dół - Gracz -->
     <bottom>
-        <HBox fx:id="rekaGracza"
-              alignment="CENTER"
-              spacing="10">
-            <padding>
-                <Insets top="20" right="20" bottom="20" left="20"/>
-            </padding>
-        </HBox>
+        <VBox alignment="CENTER" spacing="10">
+            <Label fx:id="labelGracz"
+                   text="Twoje karty"
+                   style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;"/>
+
+            <HBox fx:id="rekaGracza"
+                  alignment="CENTER"
+                  spacing="10">
+                <padding>
+                    <Insets bottom="20" left="20" right="20"/>
+                </padding>
+            </HBox>
+        </VBox>
     </bottom>
 
 </BorderPane>

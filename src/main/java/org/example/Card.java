@@ -12,30 +12,27 @@ public class Card {
     private String kolor;
     private String wartosc;
     private StackPane view;
-
+    private StackPane backview;
     public Card(String kolor, String wartosc) {
         this.kolor = kolor;
         this.wartosc = wartosc;
         stworzWidok();
+        //create_reverse_card();
     }
 
     private void stworzWidok() {
         view = new StackPane();
         view.setMinSize(80, 120);
         view.setMaxSize(80, 120);
-        System.out.println("Przed catch");
         // OPCJA 1: Użyj obrazka jako tło
         try {
             System.out.println("W catch");
-            // Sprawdź czy plik istnieje
             var stream = getClass().getResourceAsStream("/assets/textures/card_front.png");
             if (stream == null) {
                 throw new RuntimeException("Nie znaleziono pliku tekstury!");
             }
-
             Image texture = new Image(stream);
 
-            // Sprawdź czy obrazek się załadował
             if (texture.isError()) {
                 throw new RuntimeException("Błąd ładowania tekstury!");
             }
@@ -47,13 +44,11 @@ public class Card {
             imageView.setFitHeight(120);
             imageView.setPreserveRatio(false);
 
-            // Clip dla zaokrąglonych rogów
             Rectangle clip = new Rectangle(80, 120);
             clip.setArcWidth(10);
             clip.setArcHeight(10);
             imageView.setClip(clip);
 
-            // Ramka
             Rectangle ramka = new Rectangle(80, 120);
             ramka.setArcWidth(10);
             ramka.setArcHeight(10);
@@ -61,12 +56,11 @@ public class Card {
             ramka.setStroke(Color.BLACK);
             ramka.setStrokeWidth(2);
 
-            // Kolorowa nakładka (opcjonalnie, dla efektu koloru)
             Rectangle kolorowaNakladka = new Rectangle(80, 120);
             kolorowaNakladka.setArcWidth(10);
             kolorowaNakladka.setArcHeight(10);
             kolorowaNakladka.setFill(getKolorFill());
-            kolorowaNakladka.setOpacity(0.6); // Półprzezroczysta
+            kolorowaNakladka.setOpacity(0.6);
 
             Label wartoscLabel = new Label(wartosc);
             wartoscLabel.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold; " +
@@ -75,7 +69,6 @@ public class Card {
             view.getChildren().addAll(imageView, kolorowaNakladka, ramka, wartoscLabel);
 
         } catch (Exception e) {
-            // OPCJA 2: Jeśli obrazek nie istnieje, użyj CSS z wzorem
             System.out.println("Nie znaleziono tekstury, używam wzoru CSS. Błąd: " + e.getMessage());
             e.printStackTrace();
 
@@ -103,6 +96,7 @@ public class Card {
         System.out.println("Po catch");
         view.setStyle("-fx-cursor: hand;");
     }
+    //problemem tego rozwiązania jest, że jest w chuj backview (50 frontów i 50 backów)
 
     private Color getKolorFill() {
         switch (kolor) {
@@ -127,7 +121,9 @@ public class Card {
     public StackPane getView() {
         return view;
     }
-
+    public StackPane getbackview() {
+        return backview;
+    }
     public String getKolor() {
         return kolor;
     }

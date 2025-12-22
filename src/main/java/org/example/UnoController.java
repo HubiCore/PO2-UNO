@@ -1,50 +1,60 @@
 package org.example;
-
+//Błędy, możesz klikać postawioną kartę jak już jest na środku
 import javafx.fxml.FXML;
 import javafx.scene.layout.*;
 import javafx.scene.control.Label;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Random;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 public class UnoController {
-
     @FXML
     private StackPane stol;
-
     @FXML
     private HBox rekaGracza;
-
+    @FXML
+    private HBox rekaPrzeciwnika;
     @FXML
     private Label instrukcja;
+    @FXML
+    private Label labelGracz;
+    @FXML
+    private Label labelPrzeciwnik;
 
     private Card wierzchniaKarta;
     private List<Card> kartyGracza;
+    private int liczbaKartPrzeciwnika;
 
     @FXML
     public void initialize() {
-        System.out.println("=== UnoController.initialize() wywołane ===");
         rozpocznijGre();
     }
 
     private void rozpocznijGre() {
-        System.out.println("=== rozpocznijGre() wywołane ===");
         kartyGracza = new ArrayList<>();
+        liczbaKartPrzeciwnika = 7;
 
-        // Dodaj przykładowe karty do ręki gracza
+        //Dodane byle jakie karty by potestować
         kartyGracza.add(new Card("CZERWONY", "7"));
         kartyGracza.add(new Card("NIEBIESKI", "3"));
         kartyGracza.add(new Card("ZIELONY", "5"));
         kartyGracza.add(new Card("ŻÓŁTY", "2"));
         kartyGracza.add(new Card("CZERWONY", "STOP"));
         kartyGracza.add(new Card("NIEBIESKI", "+2"));
+        kartyGracza.add(new Card("ZIELONY", "8"));
 
-        // Karta startowa na stole
         wierzchniaKarta = new Card("CZERWONY", "1");
         stol.getChildren().add(wierzchniaKarta.getView());
 
-        // Wyświetl karty gracza
         wyswietlKartyGracza();
-        System.out.println("=== Karty stworzone i wyświetlone ===");
+        wyswietlKartyPrzeciwnika();
+
+        //to pokazuje napis ile kto ma kart
+        aktualizujLabele();
+
     }
 
     private void wyswietlKartyGracza() {
@@ -72,7 +82,51 @@ public class UnoController {
             rekaGracza.getChildren().add(kartaView);
         }
     }
+    private void wyswietlKartyPrzeciwnika() {
+        rekaPrzeciwnika.getChildren().clear();
+        for (int i = 0; i < liczbaKartPrzeciwnika; i++) {
+            StackPane kartaback = create_reverse_card(); // Wywołanie lokalnej metody
+            rekaPrzeciwnika.getChildren().add(kartaback);
+        }
+    }
+    private StackPane create_reverse_card() {
+        StackPane backview = new StackPane();
+        backview.setMinSize(80, 120);
+        backview.setMaxSize(80, 120);
 
+        var stream = getClass().getResourceAsStream("/assets/textures/card_back.png");
+        if (stream == null) {
+            throw new RuntimeException("Nie znaleziono pliku tekstury!");
+        }
+        Image texture = new Image(stream);
+        if (texture.isError()) {
+            throw new RuntimeException("Błąd ładowania tekstury!");
+        }
+        System.out.println("Tekstura załadowana poprawnie: " + texture.getWidth() + "x" + texture.getHeight());
+        ImageView imageView = new ImageView(texture);
+        imageView.setFitWidth(80);
+        imageView.setFitHeight(120);
+        imageView.setPreserveRatio(false);
+
+        Rectangle clip = new Rectangle(80, 120);
+        clip.setArcWidth(10);
+        clip.setArcHeight(10);
+        imageView.setClip(clip);
+
+        Rectangle ramka = new Rectangle(80, 120);
+        ramka.setArcWidth(10);
+        ramka.setArcHeight(10);
+        ramka.setFill(Color.TRANSPARENT);
+        ramka.setStroke(Color.BLACK);
+        ramka.setStrokeWidth(2);
+        backview.getChildren().addAll(imageView, ramka);
+        return backview;
+    }
+    private void aktualizujLabele() {
+        labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+        labelPrzeciwnik.setText("Przeciwnik - " + liczbaKartPrzeciwnika + " kart");
+    }
+//TODO Przerobić pod logikę serwera
     private void zagrajKarte(Card karta) {
         // Sprawdź czy karta pasuje (ten sam kolor lub wartość)
         if (karta.getKolor().equals(wierzchniaKarta.getKolor()) ||
@@ -90,11 +144,15 @@ public class UnoController {
 
             // Odśwież widok ręki
             wyswietlKartyGracza();
+            aktualizujLabele();
 
             // Sprawdź wygraną
             if (kartyGracza.isEmpty()) {
                 instrukcja.setText("WYGRAŁEŚ!");
                 instrukcja.setStyle("-fx-text-fill: gold; -fx-font-size: 48px; -fx-font-weight: bold;");
+            } else {
+                // Tura przeciwnika (prosty AI)
+                javafx.application.Platform.runLater(() -> turaPrzeciwnika());
             }
         } else {
             // Karta nie pasuje - animacja odrzucenia
@@ -108,5 +166,52 @@ public class UnoController {
             );
             anim.play();
         }
+    }
+    //Takie gówno by testować, do usunięcia ale póki testy frontend to zostaje
+    //Proste AI 50% szansy, że dobierze karte, 50% że rzuci losową kartę na stół
+    private void turaPrzeciwnika() {
+
+        if (liczbaKartPrzeciwnika == 0) {
+            instrukcja.setText("PRZECIWNIK WYGRAŁ!");
+            instrukcja.setStyle("-fx-text-fill: red; -fx-font-size: 48px; -fx-font-weight: bold;");
+            return;
+        }
+
+
+        Random random = new Random();
+        if (random.nextBoolean() && liczbaKartPrzeciwnika > 0) {
+            liczbaKartPrzeciwnika--;
+            String[] kolory = {"CZERWONY", "NIEBIESKI", "ZIELONY", "ŻÓŁTY"};
+            String[] wartosci = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "STOP", "+2"};
+            Card nowaKarta = new Card(
+                    kolory[random.nextInt(kolory.length)],
+                    wartosci[random.nextInt(wartosci.length)]
+            );
+            stol.getChildren().clear();
+            wierzchniaKarta = nowaKarta;
+            stol.getChildren().add(nowaKarta.getView());
+            instrukcja.setText("Przeciwnik zagrał!");
+            javafx.animation.Timeline delay = new javafx.animation.Timeline(
+                    new javafx.animation.KeyFrame(
+                            javafx.util.Duration.seconds(1),
+                            e -> instrukcja.setText("Twoja kolej!")
+                    )
+            );
+            delay.play();
+        } else {
+            liczbaKartPrzeciwnika++;
+            instrukcja.setText("Przeciwnik dobrał kartę");
+
+            javafx.animation.Timeline delay = new javafx.animation.Timeline(
+                    new javafx.animation.KeyFrame(
+                            javafx.util.Duration.seconds(1),
+                            e -> instrukcja.setText("Twoja kolej!")
+                    )
+            );
+            delay.play();
+        }
+
+        wyswietlKartyPrzeciwnika();
+        aktualizujLabele();
     }
 }
