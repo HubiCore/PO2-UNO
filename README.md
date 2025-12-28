@@ -1,5 +1,7 @@
 # PO2-UNO
 Projekt UNO na Programowanie Obiektowe 2
+main->frontend
+master->backend
 
 main->frontend
 
