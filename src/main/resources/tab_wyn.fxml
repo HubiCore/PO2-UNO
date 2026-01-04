@@ -2,19 +2,30 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.control.*?>
 <?import javafx.scene.image.*?>
-<?import javafx.scene.layout.*?>
 
+<AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.DbController">
+    <children>
+        <TableView fx:id="scoreTableView" layoutY="100.0" prefHeight="800.0" prefWidth="1920.0" styleClass="transparent-table"
+                   style="-fx-background-color: transparent; -fx-control-inner-background: transparent;
+                          -fx-table-cell-border-color: transparent; -fx-text-fill: white;
+                          -fx-background-insets: 0; -fx-padding: 0;
+                          -fx-selection-bar: transparent; -fx-selection-bar-non-focused: transparent;
+                          -fx-alignment: CENTER-LEFT; -fx-table-column-border-insets: 0;">
+            <columns>
+                <TableColumn fx:id="playerColumn" prefWidth="960.0" text="Gracz"
+                             resizable="false" reorderable="false"
+                             style="-fx-background-color: transparent; -fx-alignment: CENTER-LEFT; -fx-border-width: 0;"/>
+                <TableColumn fx:id="winsColumn" prefWidth="960.0" text="Liczba wygranych"
+                             resizable="false" reorderable="false"
+                             style="-fx-background-color: transparent; -fx-alignment: CENTER-LEFT; -fx-border-width: 0;"/>
+            </columns>
+        </TableView>
 
-<AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SceneController">
-   <children>
-      <TableView prefHeight="1000.0" prefWidth="1920.0">
-        <columns>
-          <TableColumn prefWidth="75.0" text="Gracz" />
-          <TableColumn prefWidth="75.0" text="Liczba wygranych" />
-        </columns>
-      </TableView>
-       <Button layoutX="800.0" layoutY="1000.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
-   </children>
+        <Button layoutX="700.0" layoutY="950.0" mnemonicParsing="false" onAction="#refreshData"
+                prefHeight="100.0" prefWidth="230.0" text="Odśwież" />
+
+        <Button layoutX="1000.0" layoutY="950.0" mnemonicParsing="false" onAction="#switch_to_main_menu"
+                prefHeight="100.0" prefWidth="230.0" text="Powrót" />
+    </children>
 </AnchorPane>
