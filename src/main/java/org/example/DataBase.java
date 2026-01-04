@@ -21,14 +21,25 @@ public class DataBase {
             System.out.println(e.getMessage());
         }
     }
-    public void Top5_Best(Connection conn){
-        String sql = "SELECT * FROM gracz GROUP BY liczba_wygranych DESC LIMIT 5";
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
-            System.out.println("Wypisano top5");
+    public String Top5_Best(Connection conn) {
+        StringBuilder result = new StringBuilder();
+        String sql = "SELECT nazwa_gracza, liczba_wygranych FROM gracz ORDER BY liczba_wygranych DESC LIMIT 5";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            int position = 1;
+            while (rs.next()) {
+                String nazwa = rs.getString("nazwa_gracza");
+                int wygrane = rs.getInt("liczba_wygranych");
+                result.append(position).append(". ").append(nazwa).append(" - ").append(wygrane).append(" wygranych\n");
+                position++;
+            }
+            if (position == 1) {
+                result.append("Brak danych o graczach.");
+            }
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            result.append("Błąd podczas pobierania danych: ").append(e.getMessage());
         }
+        return result.toString();
     }
 
 
