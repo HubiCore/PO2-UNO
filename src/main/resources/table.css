@@ -1,6 +1,26 @@
+/* table.css - zmodyfikowane ścieżki */
 .root {
-    -fx-background-image: url("/assets/textures/hubertW.jpg");
+    /*-fx-background-image: url("assets/textures/wood.jpg");*/
     -fx-background-size: cover;
     -fx-background-repeat: no-repeat;
     -fx-background-position: center center;
+}
+
+.textured-button {
+    -fx-background-image: url("assets/textures/deck_of_cards.png");
+    -fx-background-repeat: no-repeat;
+    -fx-background-size: cover;
+    -fx-background-position: center;
+    -fx-background-radius: 5;
+    -fx-border-width: 2;
+    -fx-border-radius: 5;
+    -fx-text-fill: transparent;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.6), 5, 0, 0, 1);
+    -fx-border-color: transparent;
+
+}
+.textured-button:hover {
+    -fx-text-fill: transparent;
 }

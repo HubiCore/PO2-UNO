@@ -1,20 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.media.*?>
+<?import javafx.scene.shape.*?>
+<?import javafx.scene.text.*?>
 
-<?import javafx.scene.image.ImageView?>
-<?import javafx.scene.image.Image?>
-<AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SceneController">
-   <children>
-      <TextField layoutX="151.0" layoutY="115.0" />
-      <Button layoutX="151.0" layoutY="240.0" mnemonicParsing="false" text="Button" />
-       <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
-       <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="1600.0" layoutY="30.0" pickOnBounds="true" preserveRatio="true">
-       <image>
-           <Image url="@assets/textures/tenor.gif" />
-       </image>
-   </ImageView>
-   </children>
+<AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.LoginController">
+    <children>
+        <Text fill="#2eff00" layoutX="745.0" layoutY="308.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Podaj nick" />
+        <TextField fx:id="loginTextField" layoutX="678.0" layoutY="333.0" />
+        <Button layoutX="750.0" layoutY="478.0" mnemonicParsing="false" onAction="#handlePlayButton" text="Graj" />
+        <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
+        <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="1600.0" layoutY="30.0" pickOnBounds="true" preserveRatio="true">
+            <image>
+                <Image url="@assets/textures/earth_spinning.gif" />
+            </image>
+
+        </ImageView>
+        <!-- rysowanie okienka co symuluje okienko -->
+        <Rectangle arcHeight="10.0" arcWidth="8.0" fill="#ffffff00" height="273.0" layoutX="1600.0" layoutY="30.0" stroke="#2eff00" strokeType="INSIDE" strokeWidth="4.0" width="300.0" />
+        <Line endX="298" endY="20.0" layoutX="1600" layoutY="50" startX="2.0" startY="20.0" stroke="#2eff00" strokeWidth="4.0" />
+        <Line endX="10" endY="10" layoutX="1880" layoutY="51" startX="-10.0" startY="-10" stroke="#2eff00" strokeWidth="4.0" />
+        <Line endX="10" endY="-10" layoutX="1880" layoutY="51" startX="-10.0" startY="10" stroke="#2eff00" strokeWidth="4.0" />
+        <Line endX="0" endY="-15" layoutX="1862" layoutY="51" startX="0" startY="17" stroke="#2eff00" strokeWidth="4.0" />
+        <Rectangle arcWidth="8.0" fill="#ffffff00" height="20.0" layoutX="1830.0" layoutY="43.0" stroke="#2eff00" strokeType="INSIDE" strokeWidth="4.0" width="20.0" />
+        <Line endX="0" endY="0" layoutX="1834" layoutY="39" startX="20" startY="0" stroke="#2eff00" strokeWidth="4.0" />
+        <Line endX="0" endY="20" layoutX="1854" layoutY="39" startX="0" startY="0" stroke="#2eff00" strokeWidth="4.0" />
+        <Line endX="0" endY="-15" layoutX="1825" layoutY="51" startX="0" startY="17" stroke="#2eff00" strokeWidth="4.0" />
+        <Line endX="0" endY="0" layoutX="1798" layoutY="60" startX="20" startY="0" stroke="#2eff00" strokeWidth="4.0" />
+        <Line endX="0" endY="-15" layoutX="1791" layoutY="51" startX="0" startY="17" stroke="#2eff00" strokeWidth="4.0" />
+        <Text fill="#2eff00" layoutX="1610" layoutY="60" strokeType="OUTSIDE" strokeWidth="0.0" text="HZ2202 no..8">
+            <font>
+            <Font size="20.0" />
+         </font></Text>
+
+
+    </children>
 </AnchorPane>
