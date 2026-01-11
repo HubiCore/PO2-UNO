@@ -33,7 +33,7 @@
                 <StackPane fx:id="stol" alignment="CENTER" maxHeight="180" maxWidth="120" minHeight="180" minWidth="120" />
             </VBox>
 
-            <Button prefHeight="194.0" prefWidth="272.0" styleClass="textured-button" text="Textured Button" translateX="-300" translateY="-250" StackPane.alignment="BOTTOM_CENTER" />
+            <Button onAction="#turn_off"  prefHeight="194.0" prefWidth="272.0" styleClass="textured-button" text="Textured Button" translateX="-300" translateY="-250" StackPane.alignment="BOTTOM_CENTER" />
         </StackPane>
     </center>
 

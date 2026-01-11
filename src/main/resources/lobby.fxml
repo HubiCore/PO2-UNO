@@ -2,10 +2,31 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-
+<?import javafx.scene.shape.*?>
+<?import javafx.scene.text.*?>
 
 <AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.LobbyController">
    <children>
-      <ListView fx:id="userListView" id="userListView" layoutX="72.0" layoutY="192.0" prefHeight="200.0" prefWidth="200.0" />
+      <Text fill="#2eff00" layoutX="15" layoutY="55" strokeType="OUTSIDE" strokeWidth="0.0" text="nie[UNO} lobby 2137 ..y">
+         <font>
+            <Font size="50.0" />
+         </font></Text>
+      <Rectangle arcHeight="10.0" arcWidth="8.0" fill="#ffffff00" height="1070.0" layoutX="0" layoutY="0" stroke="#2eff00" strokeType="INSIDE" strokeWidth="4.0" width="1920.0" />
+      <Line endX="1920" endY="20.0" layoutX="0" layoutY="50" startX="0" startY="20.0" stroke="#2eff00" strokeWidth="4.0" />
+      <Line endX="20" endY="20" layoutX="1886" layoutY="36" startX="-20.0" startY="-20" stroke="#2eff00" strokeWidth="4.0" />
+      <Line endX="20" endY="-20" layoutX="1886" layoutY="36" startX="-20.0" startY="20" stroke="#2eff00" strokeWidth="4.0" />
+      <Line endX="0" endY="0" layoutX="1855" layoutY="0" startX="0" startY="70" stroke="#2eff00" strokeWidth="4.0" />
+      <Rectangle arcWidth="8.0" fill="#ffffff00" height="40.0" layoutX="1800.0" layoutY="23.0" stroke="#2eff00" strokeType="INSIDE" strokeWidth="4.0" width="40.0" />
+      <Line endX="0" endY="0" layoutX="1805" layoutY="18" startX="40" startY="0" stroke="#2eff00" strokeWidth="4.0" />
+      <Line endX="0" endY="40" layoutX="1845" layoutY="18" startX="0" startY="0" stroke="#2eff00" strokeWidth="4.0" />
+      <Line endX="0" endY="0" layoutX="1793" layoutY="0" startX="0" startY="70" stroke="#2eff00" strokeWidth="4.0" />
+      <Line endX="0" endY="0" layoutX="1745" layoutY="50" startX="40" startY="0" stroke="#2eff00" strokeWidth="4.0" />
+      <Line endX="0" endY="0" layoutX="1738" layoutY="0" startX="0" startY="70" stroke="#2eff00" strokeWidth="4.0" />
+      <ListView fx:id="userListView" layoutX="760.0" layoutY="305.0" prefHeight="317.0" prefWidth="800.0" />
+      <Button fx:id="readyButton" layoutX="760.0" layoutY="638.0" mnemonicParsing="false" onAction="#handleReadyButton" prefHeight="54.0" prefWidth="154.0" styleClass="ready-button" text="Gotowy?" />
+      <Button fx:id="exitButton" layoutX="1222.0" layoutY="652.0" mnemonicParsing="false" onAction="#handleExitButton" styleClass="exit-button" text="Wyjdź" />
+
+
+
    </children>
 </AnchorPane>

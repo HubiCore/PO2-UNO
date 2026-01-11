@@ -89,4 +89,5 @@
 .table-view .column-header .label {
     -fx-alignment: CENTER-LEFT;
     -fx-text-alignment: left;
+    -fx-text-fill: #00ff00;
 }

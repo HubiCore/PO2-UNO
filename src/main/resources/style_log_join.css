@@ -18,14 +18,75 @@
     -fx-font-family: "Fake Receipt";
     -fx-font-size: 20px;
 }
-.text-field{
+
+.button:hover {
+    -fx-text-fill: #858585;
+}
+
+.exit-button {
+    -fx-text-fill: #ff0000 !important;
+}
+
+.exit-button:hover {
+    -fx-text-fill: #ff6666 !important;
+}
+
+.ready-button {
+    -fx-text-fill: #2eff00;
+}
+
+.ready-button.ready {
+    -fx-text-fill: #00ff00;
+    -fx-font-weight: bold;
+}
+
+.text-field {
     -fx-background-color: transparent;
     -fx-text-fill: #2eff00;
     -fx-border-color: #2eff00;
+    -fx-font-size: 40px;
     -fx-border-width: 4px;
     -fx-border-radius: 8px;
-
 }
-.button:hover {
-    -fx-text-fill: #858585;
+
+.list-view {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #2eff00;
+    -fx-font-size: 40px;
+}
+
+.list-cell:filled:selected, .list-cell:filled:selected:hover {
+    -fx-background-color: transparent;
+    -fx-text-fill: #2eff00;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: transparent;
+}
+
+.list-cell:odd {
+    -fx-background-color: transparent;
+}
+
+.list-cell:even {
+    -fx-background-color: transparent;
+}
+
+.list-view .viewport {
+    -fx-background-color: transparent;
+}
+
+.list-view .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+.list-view .scroll-bar:horizontal {
+    -fx-background-color: transparent;
 }
