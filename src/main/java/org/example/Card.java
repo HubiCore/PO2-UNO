@@ -9,35 +9,32 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 
 public class Card {
-    private String kolor;
-    private String wartosc;
+    private String color;
+    private String value;
     private StackPane view;
-    private StackPane backview;
-    public Card(String kolor, String wartosc) {
-        this.kolor = kolor;
-        this.wartosc = wartosc;
-        stworzWidok();
-        //create_reverse_card();
+    private StackPane backView;
+
+    public Card(String color, String value) {
+        this.color = color;
+        this.value = value;
+        createView();
+        createBackView();
     }
 
-    private void stworzWidok() {
+    private void createView() {
         view = new StackPane();
         view.setMinSize(80, 120);
         view.setMaxSize(80, 120);
-        // OPCJA 1: Użyj obrazka jako tło
         try {
-            System.out.println("W catch");
             var stream = getClass().getResourceAsStream("/assets/textures/card_front.png");
             if (stream == null) {
-                throw new RuntimeException("Nie znaleziono pliku tekstury!");
+                throw new RuntimeException("Texture file not found!");
             }
             Image texture = new Image(stream);
 
             if (texture.isError()) {
-                throw new RuntimeException("Błąd ładowania tekstury!");
+                throw new RuntimeException("Error loading texture!");
             }
-
-            System.out.println("Tekstura załadowana poprawnie: " + texture.getWidth() + "x" + texture.getHeight());
 
             ImageView imageView = new ImageView(texture);
             imageView.setFitWidth(80);
@@ -49,71 +46,124 @@ public class Card {
             clip.setArcHeight(10);
             imageView.setClip(clip);
 
-            Rectangle ramka = new Rectangle(80, 120);
-            ramka.setArcWidth(10);
-            ramka.setArcHeight(10);
-            ramka.setFill(Color.TRANSPARENT);
-            ramka.setStroke(Color.BLACK);
-            ramka.setStrokeWidth(2);
+            Rectangle frame = new Rectangle(80, 120);
+            frame.setArcWidth(10);
+            frame.setArcHeight(10);
+            frame.setFill(Color.TRANSPARENT);
+            frame.setStroke(Color.BLACK);
+            frame.setStrokeWidth(2);
 
-            Rectangle kolorowaNakladka = new Rectangle(80, 120);
-            kolorowaNakladka.setArcWidth(10);
-            kolorowaNakladka.setArcHeight(10);
-            kolorowaNakladka.setFill(getKolorFill());
-            kolorowaNakladka.setOpacity(0.6);
+            Rectangle colorOverlay = new Rectangle(80, 120);
+            colorOverlay.setArcWidth(10);
+            colorOverlay.setArcHeight(10);
+            colorOverlay.setFill(getColorFill());
+            colorOverlay.setOpacity(0.6);
 
-            Label wartoscLabel = new Label(wartosc);
-            wartoscLabel.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold; " +
+            Label valueLabel = new Label(value);
+            valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold; " +
                     "-fx-effect: dropshadow(gaussian, black, 2, 1.0, 0, 0);");
 
-            view.getChildren().addAll(imageView, kolorowaNakladka, ramka, wartoscLabel);
+            view.getChildren().addAll(imageView, colorOverlay, frame, valueLabel);
 
         } catch (Exception e) {
-            System.out.println("Nie znaleziono tekstury, używam wzoru CSS. Błąd: " + e.getMessage());
-            e.printStackTrace();
+            System.out.println("Texture not found, using CSS pattern. Error: " + e.getMessage());
 
-            Region tlo = new Region();
-            tlo.setMinSize(80, 120);
-            tlo.setMaxSize(80, 120);
-            tlo.setStyle(
-                    "-fx-background-color: " + getKolorHex() + ";" +
+            Region background = new Region();
+            background.setMinSize(80, 120);
+            background.setMaxSize(80, 120);
+            background.setStyle(
+                    "-fx-background-color: " + getColorHex() + ";" +
                             "-fx-background-radius: 10;" +
                             "-fx-border-color: black;" +
                             "-fx-border-width: 2;" +
                             "-fx-border-radius: 10;" +
-                            // Wzór - przekątne linie
                             "-fx-background-image: repeating-linear-gradient(" +
                             "45deg, transparent, transparent 10px, " +
                             "rgba(255,255,255,0.15) 10px, rgba(255,255,255,0.15) 20px);"
             );
 
-            Label wartoscLabel = new Label(wartosc);
-            wartoscLabel.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold; " +
+            Label valueLabel = new Label(value);
+            valueLabel.setStyle("-fx-text-fill: white; -fx-font-size: 24px; -fx-font-weight: bold; " +
                     "-fx-effect: dropshadow(gaussian, black, 2, 1.0, 0, 0);");
 
-            view.getChildren().addAll(tlo, wartoscLabel);
+            view.getChildren().addAll(background, valueLabel);
         }
-        System.out.println("Po catch");
         view.setStyle("-fx-cursor: hand;");
     }
-    //problemem tego rozwiązania jest, że jest w chuj backview (50 frontów i 50 backów)
 
-    private Color getKolorFill() {
-        switch (kolor) {
-            case "CZERWONY": return Color.RED;
-            case "NIEBIESKI": return Color.BLUE;
-            case "ZIELONY": return Color.GREEN;
-            case "ŻÓŁTY": return Color.YELLOW;
+    private void createBackView() {
+        backView = new StackPane();
+        backView.setMinSize(80, 120);
+        backView.setMaxSize(80, 120);
+
+        try {
+            var stream = getClass().getResourceAsStream("/assets/textures/card_back.png");
+            if (stream == null) {
+                throw new RuntimeException("Back texture file not found!");
+            }
+            Image texture = new Image(stream);
+
+            if (texture.isError()) {
+                throw new RuntimeException("Error loading back texture!");
+            }
+
+            ImageView imageView = new ImageView(texture);
+            imageView.setFitWidth(80);
+            imageView.setFitHeight(120);
+            imageView.setPreserveRatio(false);
+
+            Rectangle clip = new Rectangle(80, 120);
+            clip.setArcWidth(10);
+            clip.setArcHeight(10);
+            imageView.setClip(clip);
+
+            Rectangle frame = new Rectangle(80, 120);
+            frame.setArcWidth(10);
+            frame.setArcHeight(10);
+            frame.setFill(Color.TRANSPARENT);
+            frame.setStroke(Color.BLACK);
+            frame.setStrokeWidth(2);
+
+            backView.getChildren().addAll(imageView, frame);
+            backView.setStyle("-fx-cursor: default;");
+
+        } catch (Exception e) {
+            System.out.println("Back texture not found, using default pattern. Error: " + e.getMessage());
+
+            Region background = new Region();
+            background.setMinSize(80, 120);
+            background.setMaxSize(80, 120);
+            background.setStyle(
+                    "-fx-background-color: linear-gradient(from 0% 0% to 100% 100%, #1a1a1a, #333333);" +
+                            "-fx-background-radius: 10;" +
+                            "-fx-border-color: black;" +
+                            "-fx-border-width: 2;" +
+                            "-fx-border-radius: 10;" +
+                            "-fx-background-image: repeating-linear-gradient(" +
+                            "45deg, transparent, transparent 10px, " +
+                            "rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px);"
+            );
+
+            backView.getChildren().add(background);
+        }
+    }
+
+    private Color getColorFill() {
+        switch (color) {
+            case "RED": return Color.RED;
+            case "BLUE": return Color.BLUE;
+            case "GREEN": return Color.GREEN;
+            case "YELLOW": return Color.YELLOW;
             default: return Color.BLACK;
         }
     }
 
-    private String getKolorHex() {
-        switch (kolor) {
-            case "CZERWONY": return "#E53935";
-            case "NIEBIESKI": return "#1E88E5";
-            case "ZIELONY": return "#43A047";
-            case "ŻÓŁTY": return "#FDD835";
+    private String getColorHex() {
+        switch (color) {
+            case "RED": return "#E53935";
+            case "BLUE": return "#1E88E5";
+            case "GREEN": return "#43A047";
+            case "YELLOW": return "#FDD835";
             default: return "#000000";
         }
     }
@@ -121,14 +171,21 @@ public class Card {
     public StackPane getView() {
         return view;
     }
-    public StackPane getbackview() {
-        return backview;
-    }
-    public String getKolor() {
-        return kolor;
+
+    public StackPane getBackView() {
+        return backView;
     }
 
-    public String getWartosc() {
-        return wartosc;
+    public String getColor() {
+        return color;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public boolean canPlayOn(Card other) {
+        return this.color.equals(other.getColor()) ||
+                this.value.equals(other.getValue());
     }
 }
