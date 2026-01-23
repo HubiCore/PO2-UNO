@@ -142,7 +142,6 @@ public class UnoController {
                 instrukcja.setStyle("-fx-text-fill: gold; -fx-font-size: 48px; -fx-font-weight: bold;");
                 zablokujKarty();
             } else {
-                javafx.application.Platform.runLater(() -> turaPrzeciwnika());
             }
         } else {
             StackPane kartaView = karta.getView();
@@ -167,61 +166,6 @@ public class UnoController {
             );
             delay.play();
         }
-    }
-
-    private void turaPrzeciwnika() {
-        if (liczbaKartPrzeciwnika == 0) {
-            instrukcja.setText("PRZECIWNIK WYGRAŁ!");
-            instrukcja.setStyle("-fx-text-fill: red; -fx-font-size: 48px; -fx-font-weight: bold;");
-            zablokujKarty();
-            return;
-        }
-
-        // Symulacja decyzji przeciwnika
-        if (random.nextBoolean() && liczbaKartPrzeciwnika > 0) {
-            // Przeciwnik gra kartę
-            liczbaKartPrzeciwnika--;
-            String[] kolory = {"RED", "BLUE", "GREEN", "YELLOW"};
-            String[] wartosci = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "STOP", "+2"};
-
-            Card nowaKarta = new Card(
-                    kolory[random.nextInt(kolory.length)],
-                    wartosci[random.nextInt(wartosci.length)]
-            );
-
-            stol.getChildren().clear();
-            wierzchniaKarta = nowaKarta;
-            stol.getChildren().add(nowaKarta.getView());
-
-            instrukcja.setText("Przeciwnik zagrał kartę!");
-
-            javafx.animation.Timeline delay = new javafx.animation.Timeline(
-                    new javafx.animation.KeyFrame(
-                            javafx.util.Duration.seconds(1),
-                            e -> {
-                                instrukcja.setText("Twoja kolej!");
-                            }
-                    )
-            );
-            delay.play();
-        } else {
-            // Przeciwnik dobiera kartę
-            liczbaKartPrzeciwnika++;
-            instrukcja.setText("Przeciwnik dobrał kartę");
-
-            javafx.animation.Timeline delay = new javafx.animation.Timeline(
-                    new javafx.animation.KeyFrame(
-                            javafx.util.Duration.seconds(1),
-                            e -> {
-                                instrukcja.setText("Twoja kolej!");
-                            }
-                    )
-            );
-            delay.play();
-        }
-
-        wyswietlKartyPrzeciwnika();
-        aktualizujLabele();
     }
 
     private void zablokujKarty() {

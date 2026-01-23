@@ -27,7 +27,7 @@ public class DbController {
     private TableColumn<PlayerScore, Integer> winsColumn;
 
     private ObservableList<PlayerScore> scoreData = FXCollections.observableArrayList();
-    private NetworkClient networkClient;
+    private ClientConnection clientConnection;
 
     @FXML
     public void initialize() {
@@ -40,12 +40,18 @@ public class DbController {
     }
 
     private void connectAndLoadData() {
-        networkClient = new NetworkClient();
-        if (networkClient.connectToServer()) {
-            String response = networkClient.sendMessage("TOP5");
-            if (response != null && !response.isEmpty()) {
-                processServerResponse(response);
-            } else {
+        clientConnection = new ClientConnection();
+        if (clientConnection.connect()) {
+            try {
+                clientConnection.sendMessage("TOP5");
+                String response = clientConnection.receiveMessage();
+                if (response != null && !response.isEmpty()) {
+                    processServerResponse(response);
+                } else {
+                    loadSampleData();
+                }
+            } catch (IOException e) {
+                System.err.println("Błąd podczas komunikacji z serwerem: " + e.getMessage());
                 loadSampleData();
             }
         } else {
@@ -60,6 +66,8 @@ public class DbController {
         for (String line : lines) {
             line = line.trim();
             if (line.isEmpty()) continue;
+            line = line.replaceFirst("^TOP5\\s*", "");
+
             try {
                 String withoutPosition = line.replaceFirst("^\\d+\\.\\s*", "");
 
@@ -79,12 +87,12 @@ public class DbController {
                 e.printStackTrace();
             }
         }
-
     }
 
     public void addPlayerScore(String playerName, int wins) {
         scoreData.add(new PlayerScore(playerName, wins));
     }
+
     private void loadSampleData() {
         addPlayerScore("Jan Kowalski", 15);
         addPlayerScore("Anna Nowak", 12);
@@ -95,9 +103,8 @@ public class DbController {
 
     @FXML
     private void switch_to_main_menu(ActionEvent event) throws IOException {
-        // Rozłącz się z serwerem przed zamknięciem
-        if (networkClient != null) {
-            networkClient.disconnect();
+        if (clientConnection != null && clientConnection.isConnected()) {
+            clientConnection.disconnect();
         }
 
         Stage stage;
@@ -117,11 +124,12 @@ public class DbController {
     private void refreshData(ActionEvent event) {
         // Dodaj przycisk odświeżania w FXML jeśli chcesz
         scoreData.clear();
-        if (networkClient != null) {
-            networkClient.disconnect();
+        if (clientConnection != null && clientConnection.isConnected()) {
+            clientConnection.disconnect();
         }
         connectAndLoadData();
     }
+
     public static class PlayerScore {
         private String playerName;
         private Integer wins;

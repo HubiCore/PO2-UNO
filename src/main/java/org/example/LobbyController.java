@@ -40,13 +40,11 @@ public class LobbyController {
         messageReceiver.start();
     }
 
-    // Metoda do ustawienia połączenia i nicku
     public void setupConnection(ClientConnection connection, String nickname) {
         this.clientConnection = connection;
         this.nickname = nickname;
 
         if (clientConnection != null && clientConnection.isConnected()) {
-            // Zarejestruj się na serwerze
             clientConnection.sendMessage("JOIN " + nickname);
         }
     }
@@ -77,14 +75,16 @@ public class LobbyController {
             }
         } else if (message.startsWith("READY ")) {
             String user = message.substring(6);
-            // Aktualizuj UI dla gotowego użytkownika
         } else if (message.startsWith("UNREADY ")) {
             String user = message.substring(8);
-            // Aktualizuj UI dla niegotowego użytkownika
         } else if (message.startsWith("START_GAME")) {
-            // Przejdź do ekranu gry
-        }
+            try {switch_to_game();}
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+            }
     }
+
     @FXML
     private void handleReadyButton() {
         if (!isReady) {
@@ -122,25 +122,14 @@ public class LobbyController {
         stage.setFullScreen(true);
         stage.show();
     }
-
-
-    @FXML
-    private void addUser() {
-        // Metoda pozostaje niezmieniona, jeśli potrzebujesz
-    }
-
-    public void addUser(String nickname) {
-        if (nickname != null && !nickname.trim().isEmpty() && !userList.contains(nickname)) {
-            userList.add(nickname);
-        }
-    }
-
-    @FXML
-    private void removeSelectedUser() {
-        int selectedIndex = userListView.getSelectionModel().getSelectedIndex();
-        if (selectedIndex >= 0) {
-            userList.remove(selectedIndex);
-        }
+    private void switch_to_game() throws IOException {
+        Stage stage = (Stage) userListView.getScene().getWindow();
+        Parent root = FXMLLoader.load(getClass().getResource("/uno_game.fxml"));
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+        stage.setScene(scene);
+        stage.setFullScreen(true);
+        stage.show();
     }
 
     public ObservableList<String> getUserList() {

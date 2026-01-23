@@ -47,8 +47,8 @@ public class LoginController {
         // Utwórz połączenie z serwerem
         clientConnection = new ClientConnection();
         boolean connected = clientConnection.connect();
-
         if (connected) {
+            clientConnection.sendMessage("JOIN " + savedLoginText);
             switch_to_lobby(event);
         } else {
             System.out.println("Nie udało się połączyć z serwerem");
