@@ -1,5 +1,5 @@
 package org.example;
-
+import java.util.random.RandomGenerator;
 public class Cart {
     private String kolor;
     private String wartosc;
@@ -25,5 +25,12 @@ public class Cart {
     public static Cart fromString(String str) {
         String[] parts = str.split(":");
         return new Cart(parts[0], parts[1]);
+    }
+    public static Cart generate_random_cart() {
+        String[] colors = {"RED", "GREEN", "BLUE", "YELLOW"};
+        String[] weights = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}; //później dodać karty specjalne
+        int colorIndex = (int)(Math.random() * colors.length);
+        int weightIndex = (int)(Math.random() * weights.length);
+        return new Cart(colors[colorIndex], weights[weightIndex]);
     }
 }

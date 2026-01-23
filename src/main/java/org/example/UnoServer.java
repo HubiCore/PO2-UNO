@@ -61,7 +61,9 @@ public class UnoServer extends Thread {
             this.conn = conn;
             this.db = db;
         }
+        public void initialize_game(){
 
+        }
         public void run() {
             try (
                     BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()))
@@ -71,7 +73,6 @@ public class UnoServer extends Thread {
 
                 while ((inputLine = in.readLine()) != null) {
                     System.out.println("Received from client: " + inputLine);
-
                     if (inputLine.startsWith("JOIN ")) {
                         handleJoin(inputLine.substring(5));
                     } else if (inputLine.startsWith("READY ")) {
@@ -102,7 +103,7 @@ public class UnoServer extends Thread {
 
         private void handleJoin(String nick) {
             if (connectedClients.containsKey(nick)) {
-                out.println("ERROR Nick już zajęty");
+                out.println("ERROR_TAKEN");
                 return;
             }
             db.Insert_User(conn, nick);
@@ -119,6 +120,8 @@ public class UnoServer extends Thread {
 
                 if (readyUsers.size() == connectedClients.size() && connectedClients.size() >= 2) {
                     broadcastMessage("START_GAME");
+                    System.out.println("Gra się zaczyna");
+                    initialize_game();
                 }
             }
         }

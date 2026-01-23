@@ -30,21 +30,24 @@ public class DataBase {
 
         return false;
     }
-    public void Insert_User(Connection conn,String name){
-        String sql = "INSERT INTO gracz (username, liczba_wygranych) VALUES ("+name + ", 0)";
-        if (is_player(conn, name)) {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute(sql);
+    public void Insert_User(Connection conn, String name) {
+        if (!is_player(conn, name)) {
+            String sql = "INSERT INTO gracz (username, liczba_wygranych) VALUES (?, 0)";
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, name);
+                pstmt.executeUpdate();
                 System.out.println("Dodano gracza " + name);
             } catch (SQLException e) {
-                System.out.println(e.getMessage());
+                System.out.println("Błąd przy dodawaniu gracza: " + e.getMessage());
             }
+        } else {
+            System.out.println("Gracz " + name + " już istnieje w bazie");
         }
     }
 
     public void increaseWins(Connection conn, String name) {
         String sql = "UPDATE gracz SET liczba_wygranych = liczba_wygranych + 1 WHERE username = ?";
-
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, name);
             int affectedRows = pstmt.executeUpdate();
