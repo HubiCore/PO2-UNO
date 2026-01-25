@@ -21,6 +21,19 @@ public class Card {
         createBackView();
     }
 
+    public static Card fromString(String cardStr) {
+        String[] parts = cardStr.split(":");
+        if (parts.length != 2) {
+            throw new IllegalArgumentException("Nieprawidłowy format karty: " + cardStr);
+        }
+        return new Card(parts[0], parts[1]);
+    }
+
+    @Override
+    public String toString() {
+        return color + ":" + value;
+    }
+
     private void createView() {
         view = new StackPane();
         view.setMinSize(80, 120);

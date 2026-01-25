@@ -6,25 +6,26 @@
 
 <BorderPane prefHeight="1080" prefWidth="1920" stylesheets="/table.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.UnoController">
 
-    <left>
-        <VBox alignment="CENTER_LEFT" spacing="10">
-            <padding>
-                <Insets bottom="10" left="20" right="20" top="20" />
-            </padding>
-            <Label style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 0 0 100; -fx-rotate: 90" text="Gracz Lewy - 7 kart" />  <!-- Dodano ujemny padding z lewej -->
-            <HBox fx:id="rekaLewego" alignment="CENTER" spacing="5.0" style="-fx-rotate: 90;" />
-        </VBox>
-    </left>
-
     <top>
         <VBox alignment="CENTER" spacing="10">
             <padding>
                 <Insets bottom="10" left="20" right="20" top="20" />
             </padding>
+            <Label fx:id="labelTura" style="-fx-text-fill: gold; -fx-font-size: 20px; -fx-font-weight: bold;" text="Oczekiwanie na rozpoczęcie gry..." />
             <Label fx:id="labelPrzeciwnik" style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold;" text="Przeciwnik - 7 kart" />
             <HBox fx:id="rekaPrzeciwnika" alignment="CENTER" spacing="5.0" />
         </VBox>
     </top>
+
+    <left>
+        <VBox alignment="CENTER_LEFT" spacing="10">
+            <padding>
+                <Insets bottom="10" left="20" right="20" top="20" />
+            </padding>
+            <Label fx:id="labelLewy" style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 0 0 100; -fx-rotate: 90" text="Gracz Lewy - 7 kart" />
+            <HBox fx:id="rekaLewego" alignment="CENTER" spacing="5.0" style="-fx-rotate: 90;" />
+        </VBox>
+    </left>
 
     <center>
         <StackPane>
@@ -33,7 +34,7 @@
                 <StackPane fx:id="stol" alignment="CENTER" maxHeight="180" maxWidth="120" minHeight="180" minWidth="120" />
             </VBox>
 
-            <Button  prefHeight="194.0" prefWidth="272.0" styleClass="textured-button" text="Textured Button" translateX="-300" translateY="-250" StackPane.alignment="BOTTOM_CENTER" />
+            <Button prefHeight="194.0" prefWidth="272.0" styleClass="textured-button" text="Textured Button" translateX="-300" translateY="-250" StackPane.alignment="BOTTOM_CENTER" />
         </StackPane>
     </center>
 
@@ -42,7 +43,7 @@
             <padding>
                 <Insets bottom="10" left="20" right="20" top="20" />
             </padding>
-            <Label style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 0 0 100; -fx-rotate: 90" text="Gracz Prawy - 7 kart" />
+            <Label fx:id="labelPrawy" style="-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 0 0 0 100; -fx-rotate: 90" text="Gracz Prawy - 7 kart" />
             <HBox fx:id="rekaPrawego" alignment="CENTER" spacing="5.0" style="-fx-rotate: -90;" />
         </VBox>
     </right>
