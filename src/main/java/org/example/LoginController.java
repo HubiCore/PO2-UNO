@@ -8,6 +8,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
 import javafx.scene.control.Button;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.Label;
 import javafx.event.ActionEvent;
 import javafx.stage.Stage;
 import java.io.IOException;
@@ -16,49 +18,104 @@ import java.util.function.UnaryOperator;
 public class LoginController {
     @FXML
     private TextField loginTextField;
-    private String savedLoginText;
-    private ClientConnection clientConnection;
+    @FXML
+    private PasswordField passwordField;
+    @FXML
+    private Label errorLabel;
 
+    private String savedLoginText;
+    private String savedPassword;
+    private ClientConnection clientConnection;
 
     @FXML
     public void initialize() {
-        //Max 20 znaków
-        UnaryOperator<TextFormatter.Change> filter = change -> {
-            if (change.isContentChange()) {
-                int newLength = change.getControlNewText().length();
-                if (newLength > 20) {
-                    return null;
-                }
+        // Max 20 znaków dla loginu - tylko litery
+        UnaryOperator<TextFormatter.Change> loginFilter = change -> {
+            String newText = change.getControlNewText();
+
+            // Sprawdź długość
+            if (newText.length() > 20) {
+                return null;
             }
+
+            // Sprawdź czy tylko litery (włącznie z polskimi znakami)
+            if (!newText.matches("[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]*")) {
+                return null;
+            }
+
             return change;
         };
-        loginTextField.setTextFormatter(new TextFormatter<>(filter));
+        loginTextField.setTextFormatter(new TextFormatter<>(loginFilter));
+
+        // Max 30 znaków dla hasła
+        UnaryOperator<TextFormatter.Change> passwordFilter = change -> {
+            String newText = change.getControlNewText();
+
+            if (newText.length() > 30) {
+                return null;
+            }
+
+            return change;
+        };
+        passwordField.setTextFormatter(new TextFormatter<>(passwordFilter));
+
+        // Ukryj etykietę błędu na starcie
+        errorLabel.setVisible(false);
     }
+
     @FXML
     private void handlePlayButton(ActionEvent event) throws IOException {
-        savedLoginText = loginTextField.getText();
-        if (savedLoginText == null || savedLoginText.trim().isEmpty()) {
-            System.out.println("Wprowadź nick!");
+        savedLoginText = loginTextField.getText().trim();
+        savedPassword = passwordField.getText();
+
+        // Resetuj błędy
+        errorLabel.setVisible(false);
+
+        // Walidacja loginu
+        if (savedLoginText.isEmpty()) {
+            showError("Wprowadź nick!");
+            return;
+        }
+
+        // Sprawdź czy login zawiera tylko litery
+        if (!savedLoginText.matches("[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+")) {
+            showError("Login może zawierać tylko litery (bez cyfr i znaków specjalnych)!");
+            return;
+        }
+
+        // Walidacja hasła
+        if (savedPassword.isEmpty()) {
+            showError("Wprowadź hasło!");
+            return;
+        }
+
+        if (savedPassword.length() < 6) {
+            showError("Hasło musi mieć co najmniej 6 znaków!");
             return;
         }
 
         System.out.println("Zapisany login: " + savedLoginText);
+        System.out.println("Hasło: " + savedPassword);
 
         // Utwórz połączenie z serwerem
         clientConnection = new ClientConnection();
         boolean connected = clientConnection.connect();
+
         if (connected) {
-            clientConnection.sendMessage("JOIN " + savedLoginText);
+            // Wysyłamy dane logowania
+            String loginData = "LOGIN " + savedLoginText + ":" + savedPassword;
+            clientConnection.sendMessage(loginData);
+
+            // Tutaj możesz dodać oczekiwanie na odpowiedź od serwera
+            // Na razie przechodzimy od razu do lobby
             switch_to_lobby(event);
         } else {
-            System.out.println("Nie udało się połączyć z serwerem");
-            // Możesz dodać komunikat dla użytkownika
+            showError("Nie udało się połączyć z serwerem");
         }
     }
 
     @FXML
     private void switch_to_main_menu(ActionEvent event) throws IOException {
-        System.out.println(getSavedLoginText());
         Stage stage;
         Scene scene;
         Parent root;
@@ -73,7 +130,6 @@ public class LoginController {
 
     @FXML
     private void switch_to_lobby(ActionEvent event) throws IOException {
-        System.out.println(getSavedLoginText());
         Stage stage;
         Scene scene;
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/lobby.fxml"));
@@ -91,7 +147,16 @@ public class LoginController {
         stage.show();
     }
 
+    private void showError(String message) {
+        errorLabel.setText(message);
+        errorLabel.setVisible(true);
+    }
+
     public String getSavedLoginText() {
         return savedLoginText;
+    }
+
+    public String getSavedPassword() {
+        return savedPassword;
     }
 }
