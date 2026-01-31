@@ -26,80 +26,123 @@ public class LobbyController {
     private ObservableList<String> userList;
     private ClientConnection clientConnection;
     private String nickname;
-
+    private Thread messageReceiver;
 
     @FXML
     public void initialize() {
         userList = FXCollections.observableArrayList();
-        //addUser("test1");
-        //addUser("test2");
-        //addUser("test3");
         userListView.setItems(userList);
-        Thread messageReceiver = new Thread(this::receiveMessages);
-        messageReceiver.setDaemon(true);
-        messageReceiver.start();
     }
 
-    // Metoda do ustawienia połączenia i nicku
     public void setupConnection(ClientConnection connection, String nickname) {
         this.clientConnection = connection;
         this.nickname = nickname;
 
         if (clientConnection != null && clientConnection.isConnected()) {
-            // Zarejestruj się na serwerze
-            clientConnection.sendMessage("JOIN " + nickname);
+            startMessageReceiver();
         }
     }
 
-    private void receiveMessages() {
-        try {
-            while (clientConnection != null && clientConnection.isConnected()) {
-                String message = clientConnection.receiveMessage();
-                if (message != null) {
-                    Platform.runLater(() -> handleServerMessage(message));
+    private void startMessageReceiver() {
+        messageReceiver = new Thread(() -> {
+            try {
+                while (clientConnection != null && clientConnection.isConnected()) {
+                    String message = clientConnection.receiveMessage();
+                    if (message != null) {
+                        Platform.runLater(() -> handleServerMessage(message));
+                    }
                 }
+            } catch (IOException e) {
+                Platform.runLater(() -> {
+                    showError("Utracono połączenie z serwerem");
+                    try {
+                        goBackToMainMenu();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                });
             }
-        } catch (IOException e) {
-            Platform.runLater(() ->
-                    System.out.println("Utracono połączenie z serwerem"));
-        }
+        });
+        messageReceiver.setDaemon(true);
+        messageReceiver.start();
     }
+
     private void handleServerMessage(String message) {
         System.out.println("Otrzymano od serwera: " + message);
 
         if (message.startsWith("USERLIST ")) {
-            String[] users = message.substring(9).split(",");
-            userList.clear();
-            for (String user : users) {
-                if (!user.isEmpty()) {
-                    userList.add(user);
-                }
-            }
+            updateUserList(message.substring(9));
         } else if (message.startsWith("READY ")) {
             String user = message.substring(6);
-            // Aktualizuj UI dla gotowego użytkownika
+            updateUserStatus(user, true);
         } else if (message.startsWith("UNREADY ")) {
             String user = message.substring(8);
-            // Aktualizuj UI dla niegotowego użytkownika
+            updateUserStatus(user, false);
+        } else if (message.startsWith("USER_JOINED ")) {
+            String user = message.substring(12);
+            System.out.println("Gracz " + user + " dołączył");
+        } else if (message.startsWith("USER_LEFT ")) {
+            String user = message.substring(10);
+            System.out.println("Gracz " + user + " opuścił lobby");
+        } else if (message.startsWith("JOIN_SUCCESS ")) {
+            String user = message.substring(13);
+            System.out.println("Witaj " + user + "!");
         } else if (message.startsWith("START_GAME")) {
-            // Przejdź do ekranu gry
+            try {
+                switch_to_game();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else if (message.startsWith("ERROR")) {
+            showError(message);
         }
     }
+
+    private void updateUserList(String usersStr) {
+        userList.clear();
+        String[] users = usersStr.split(",");
+        for (String user : users) {
+            if (!user.isEmpty()) {
+                userList.add(user);
+            }
+        }
+
+        int playerCount = userList.size();
+        if (playerCount >= 4) {
+            readyButton.setDisable(true);
+        } else if (playerCount >= 2) {
+            readyButton.setDisable(false);
+        } else {
+            readyButton.setDisable(true);
+        }
+    }
+
+    private void updateUserStatus(String user, boolean ready) {
+        for (int i = 0; i < userList.size(); i++) {
+            String listUser = userList.get(i);
+            if (listUser.startsWith(user)) {
+                String newStatus = ready ? "✓ " + user : user;
+                userList.set(i, newStatus);
+                break;
+            }
+        }
+    }
+
     @FXML
     private void handleReadyButton() {
         if (!isReady) {
             if (clientConnection != null) {
                 clientConnection.sendMessage("READY " + nickname);
             }
-            readyButton.setText("Gotowość");
-            readyButton.getStyleClass().add("ready");
+            readyButton.setText("Gotowość ✓");
+            readyButton.setStyle("-fx-background-color: green; -fx-text-fill: white;");
             isReady = true;
         } else {
             if (clientConnection != null) {
                 clientConnection.sendMessage("UNREADY " + nickname);
             }
             readyButton.setText("Gotowy?");
-            readyButton.getStyleClass().remove("ready");
+            readyButton.setStyle("");
             isReady = false;
         }
     }
@@ -111,44 +154,49 @@ public class LobbyController {
             clientConnection.disconnect();
         }
 
-        Stage stage;
-        Scene scene;
-        Parent root;
-        root = FXMLLoader.load(getClass().getResource("/main_menu.fxml"));
-        stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-        scene = new Scene(root);
+        if (messageReceiver != null) {
+            messageReceiver.interrupt();
+        }
+
+        goBackToMainMenu();
+    }
+
+    private void goBackToMainMenu() throws IOException {
+        Stage stage = (Stage) userListView.getScene().getWindow();
+        Parent root = FXMLLoader.load(getClass().getResource("/main_menu.fxml"));
+        Scene scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         stage.setScene(scene);
         stage.setFullScreen(true);
         stage.show();
     }
 
-
-    @FXML
-    private void addUser() {
-        // Metoda pozostaje niezmieniona, jeśli potrzebujesz
-    }
-
-    public void addUser(String nickname) {
-        if (nickname != null && !nickname.trim().isEmpty() && !userList.contains(nickname)) {
-            userList.add(nickname);
+    private void switch_to_game() throws IOException {
+        if (messageReceiver != null) {
+            messageReceiver.interrupt();
         }
+
+        Stage stage = (Stage) userListView.getScene().getWindow();
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/uno_game.fxml"));
+        Parent root = loader.load();
+
+        UnoController gameController = loader.getController();
+        gameController.setupConnection(clientConnection, nickname);
+
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+        stage.setScene(scene);
+        stage.setFullScreen(true);
+        stage.show();
     }
 
-    @FXML
-    private void removeSelectedUser() {
-        int selectedIndex = userListView.getSelectionModel().getSelectedIndex();
-        if (selectedIndex >= 0) {
-            userList.remove(selectedIndex);
-        }
-    }
-
-    public ObservableList<String> getUserList() {
-        return userList;
-    }
-
-    public void setUserList(ObservableList<String> userList) {
-        this.userList = userList;
-        userListView.setItems(userList);
+    private void showError(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Błąd");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
     }
 }

@@ -27,7 +27,7 @@ public class DbController {
     private TableColumn<PlayerScore, Integer> winsColumn;
 
     private ObservableList<PlayerScore> scoreData = FXCollections.observableArrayList();
-    private NetworkClient networkClient;
+    private ClientConnection clientConnection;
 
     @FXML
     public void initialize() {
@@ -35,17 +35,22 @@ public class DbController {
         winsColumn.setCellValueFactory(new PropertyValueFactory<>("wins"));
         scoreTableView.setItems(scoreData);
 
-        // Połączenie z serwerem i pobranie danych
         connectAndLoadData();
     }
 
     private void connectAndLoadData() {
-        networkClient = new NetworkClient();
-        if (networkClient.connectToServer()) {
-            String response = networkClient.sendMessage("TOP5");
-            if (response != null && !response.isEmpty()) {
-                processServerResponse(response);
-            } else {
+        clientConnection = new ClientConnection();
+        if (clientConnection.connect()) {
+            try {
+                clientConnection.sendMessage("TOP5");
+                String response = clientConnection.receiveMessage();
+                if (response != null && !response.isEmpty()) {
+                    processServerResponse(response);
+                } else {
+                    loadSampleData();
+                }
+            } catch (IOException e) {
+                System.err.println("Błąd podczas komunikacji z serwerem: " + e.getMessage());
                 loadSampleData();
             }
         } else {
@@ -56,35 +61,42 @@ public class DbController {
 
     private void processServerResponse(String response) {
         scoreData.clear();
-        String[] lines = response.split("\n");
-        for (String line : lines) {
-            line = line.trim();
-            if (line.isEmpty()) continue;
+
+        if (response.startsWith("TOP5 ")) {
+            response = response.substring(5).trim();
+        }
+        System.out.println("Server response: " + response);
+
+        String[] records = response.split("/");
+
+        for (String record : records) {
+            record = record.trim();
+            if (record.isEmpty()) continue;
+
+            System.out.println("Processing record: " + record);
+
             try {
-                String withoutPosition = line.replaceFirst("^\\d+\\.\\s*", "");
+                String withoutPosition = record.replaceFirst("^\\d+\\.\\s*", "");
 
                 String[] parts = withoutPosition.split(" - ");
                 if (parts.length >= 2) {
                     String playerName = parts[0].trim();
                     String winsPart = parts[1].trim();
-                    int wins = 0;
-                    if (winsPart.contains("wygranych")) {
-                        String winsStr = winsPart.split("\\s+")[0];
-                        wins = Integer.parseInt(winsStr);
-                    }
+                    String winsStr = winsPart.split("\\s+")[0];
+                    int wins = Integer.parseInt(winsStr);
+
                     scoreData.add(new PlayerScore(playerName, wins));
                 }
             } catch (Exception e) {
-                System.err.println("Błąd przetwarzania linii: " + line);
+                System.err.println("Błąd przetwarzania rekordu: " + record);
                 e.printStackTrace();
             }
         }
-
     }
-
     public void addPlayerScore(String playerName, int wins) {
         scoreData.add(new PlayerScore(playerName, wins));
     }
+
     private void loadSampleData() {
         addPlayerScore("Jan Kowalski", 15);
         addPlayerScore("Anna Nowak", 12);
@@ -95,9 +107,8 @@ public class DbController {
 
     @FXML
     private void switch_to_main_menu(ActionEvent event) throws IOException {
-        // Rozłącz się z serwerem przed zamknięciem
-        if (networkClient != null) {
-            networkClient.disconnect();
+        if (clientConnection != null && clientConnection.isConnected()) {
+            clientConnection.disconnect();
         }
 
         Stage stage;
@@ -115,13 +126,13 @@ public class DbController {
 
     @FXML
     private void refreshData(ActionEvent event) {
-        // Dodaj przycisk odświeżania w FXML jeśli chcesz
         scoreData.clear();
-        if (networkClient != null) {
-            networkClient.disconnect();
+        if (clientConnection != null && clientConnection.isConnected()) {
+            clientConnection.disconnect();
         }
         connectAndLoadData();
     }
+
     public static class PlayerScore {
         private String playerName;
         private Integer wins;

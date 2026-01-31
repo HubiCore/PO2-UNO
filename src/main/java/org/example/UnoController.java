@@ -1,244 +1,474 @@
 package org.example;
 
+import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import javafx.scene.layout.*;
 import javafx.scene.control.Label;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+import java.net.URL;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class UnoController {
-    @FXML
-    private StackPane stol;
-    @FXML
-    private HBox rekaGracza;
-    @FXML
-    private HBox rekaPrzeciwnika; // górny przeciwnik (można usunąć jeśli nie potrzebny)
-    @FXML
-    private HBox rekaLewego; // lewy przeciwnik
-    @FXML
-    private HBox rekaPrawego; // prawy przeciwnik
-    @FXML
-    private Label instrukcja;
-    @FXML
-    private Label labelGracz;
-    @FXML
-    private Label labelPrzeciwnik; // górny przeciwnik
+public class UnoController implements Initializable {
+    @FXML private StackPane stol;
+    @FXML private HBox rekaGracza;
+    @FXML private HBox rekaPrzeciwnika;
+    @FXML private HBox rekaLewego;
+    @FXML private HBox rekaPrawego;
+    @FXML private Label instrukcja;
+    @FXML private Label labelGracz;
+    @FXML private Label labelPrzeciwnik;
+    @FXML private Label labelLewy;
+    @FXML private Label labelPrawy;
+    @FXML private Label labelTura;
 
     private Card wierzchniaKarta;
     private List<Card> kartyGracza;
-    private int liczbaKartPrzeciwnika;
-    private int liczbaKartLewego;
-    private int liczbaKartPrawego;
+    private Map<String, Integer> przeciwnicyKarty;
+    private ClientConnection clientConnection;
+    private String nickname;
+    private String currentPlayer;
+    private boolean myTurn = false;
+    private boolean waitingForColorChoice = false;
+    private AtomicBoolean gameActive = new AtomicBoolean(true);
+    private Thread messageReceiver;
+    private volatile boolean uiReady = false;
+    private Queue<String> pendingMessages = new ConcurrentLinkedQueue<>();
 
-    @FXML
-    public void initialize() {
-        rozpocznijGre();
-    }
-
-    private void rozpocznijGre() {
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        przeciwnicyKarty = new HashMap<>();
         kartyGracza = new ArrayList<>();
-        liczbaKartPrzeciwnika = 7;
-        liczbaKartLewego = 7;
-        liczbaKartPrawego = 7;
+        System.out.println("Kontroler zainicjalizowany");
 
-        // Dodane byle jakie karty by potestować
-        kartyGracza.add(new Card("CZERWONY", "7"));
-        kartyGracza.add(new Card("NIEBIESKI", "3"));
-        kartyGracza.add(new Card("ZIELONY", "5"));
-        kartyGracza.add(new Card("ŻÓŁTY", "2"));
-        kartyGracza.add(new Card("CZERWONY", "STOP"));
-        kartyGracza.add(new Card("NIEBIESKI", "+2"));
-        kartyGracza.add(new Card("ZIELONY", "8"));
+        Platform.runLater(() -> {
+            uiReady = true;
+            System.out.println("UI gotowe! Przetwarzam oczekujące wiadomości: " + pendingMessages.size());
 
-        wierzchniaKarta = new Card("CZERWONY", "1");
-        stol.getChildren().add(wierzchniaKarta.getView());
-
-        wyswietlKartyGracza();
-        wyswietlKartyPrzeciwnika();
-        wyswietlKartyLewego();
-        wyswietlKartyPrawego();
-
-        // to pokazuje napis ile kto ma kart
-        aktualizujLabele();
+            processPendingMessages();
+        });
     }
 
-    private void wyswietlKartyGracza() {
-        rekaGracza.getChildren().clear();
+    public void setupConnection(ClientConnection connection, String nickname) {
+        this.clientConnection = connection;
+        this.nickname = nickname;
+        System.out.println("Ustawiono połączenie dla: " + nickname);
 
-        for (Card karta : kartyGracza) {
-            StackPane kartaView = karta.getView();
-
-            // Dodaj efekt hover
-            kartaView.setOnMouseEntered(e -> {
-                kartaView.setTranslateY(-15);
-                kartaView.setStyle(kartaView.getStyle() +
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 15, 0.5, 0, 5);");
-            });
-
-            kartaView.setOnMouseExited(e -> {
-                kartaView.setTranslateY(0);
-                kartaView.setStyle(kartaView.getStyle().replace(
-                        "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 15, 0.5, 0, 5);", ""));
-            });
-
-            // Obsługa kliknięcia - zagranie karty
-            kartaView.setOnMouseClicked(e -> zagrajKarte(karta));
-
-            rekaGracza.getChildren().add(kartaView);
-        }
+        startMessageReceiver();
+        Platform.runLater(() -> {
+            clientConnection.sendMessage("INIT_GAME ");
+            System.out.println("Wysłano INIT_GAME");
+        });
     }
 
-    private void wyswietlKartyPrzeciwnika() {
-        rekaPrzeciwnika.getChildren().clear();
-        for (int i = 0; i < liczbaKartPrzeciwnika; i++) {
-            StackPane kartaback = createReverseCard();
-            rekaPrzeciwnika.getChildren().add(kartaback);
-        }
-    }
+    private void startMessageReceiver() {
+        messageReceiver = new Thread(() -> {
+            try {
+                System.out.println("Rozpoczęto wątek odbierania wiadomości");
+                while (gameActive.get() && clientConnection != null && clientConnection.isConnected()) {
+                    try {
+                        String message = clientConnection.receiveMessage();
+                        if (message != null && !message.trim().isEmpty()) {
+                            System.out.println("Odebrano w wątku sieciowym: [" + message + "]");
 
-    private void wyswietlKartyLewego() {
-        rekaLewego.getChildren().clear();
-        for (int i = 0; i < liczbaKartLewego; i++) {
-            StackPane kartaback = createReverseCard();
-            rekaLewego.getChildren().add(kartaback);
-        }
-    }
-
-    private void wyswietlKartyPrawego() {
-        rekaPrawego.getChildren().clear();
-        for (int i = 0; i < liczbaKartPrawego; i++) {
-            StackPane kartaback = createReverseCard();
-            rekaPrawego.getChildren().add(kartaback);
-        }
-    }
-
-    private StackPane createReverseCard() {
-        StackPane backview = new StackPane();
-        backview.setMinSize(80, 120);
-        backview.setMaxSize(80, 120);
-
-        var stream = getClass().getResourceAsStream("/assets/textures/card_back.png");
-        if (stream == null) {
-            throw new RuntimeException("Nie znaleziono pliku tekstury!");
-        }
-        Image texture = new Image(stream);
-        if (texture.isError()) {
-            throw new RuntimeException("Błąd ładowania tekstury!");
-        }
-
-        ImageView imageView = new ImageView(texture);
-        imageView.setFitWidth(80);
-        imageView.setFitHeight(120);
-        imageView.setPreserveRatio(false);
-
-        Rectangle clip = new Rectangle(80, 120);
-        clip.setArcWidth(10);
-        clip.setArcHeight(10);
-        imageView.setClip(clip);
-
-        Rectangle ramka = new Rectangle(80, 120);
-        ramka.setArcWidth(10);
-        ramka.setArcHeight(10);
-        ramka.setFill(Color.TRANSPARENT);
-        ramka.setStroke(Color.BLACK);
-        ramka.setStrokeWidth(2);
-        backview.getChildren().addAll(imageView, ramka);
-        return backview;
-    }
-
-    private void aktualizujLabele() {
-        labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
-        labelPrzeciwnik.setText("Przeciwnik - " + liczbaKartPrzeciwnika + " kart");
-        // Możesz też dodać etykiety dla lewego i prawego jeśli chcesz
-    }
-
-    private void zagrajKarte(Card karta) {
-        // Sprawdź czy karta pasuje (ten sam kolor lub wartość)
-        if (karta.getKolor().equals(wierzchniaKarta.getKolor()) ||
-                karta.getWartosc().equals(wierzchniaKarta.getWartosc())) {
-
-            // Usuń starą kartę ze stołu
-            stol.getChildren().clear();
-
-            // Połóż nową kartę na stole
-            wierzchniaKarta = karta;
-            stol.getChildren().add(karta.getView());
-
-            // Usuń kartę z ręki gracza
-            kartyGracza.remove(karta);
-
-            // Odśwież widok ręki
-            wyswietlKartyGracza();
-            aktualizujLabele();
-
-            // Sprawdź wygraną
-            if (kartyGracza.isEmpty()) {
-                instrukcja.setText("WYGRAŁEŚ!");
-                instrukcja.setStyle("-fx-text-fill: gold; -fx-font-size: 48px; -fx-font-weight: bold;");
-            } else {
-                // Tura przeciwnika (górnego) - pozostaje bez zmian
-                javafx.application.Platform.runLater(() -> turaPrzeciwnika());
+                            String[] messages = message.split("\n");
+                            for (String msg : messages) {
+                                msg = msg.trim();
+                                if (!msg.isEmpty()) {
+                                    System.out.println("Dodaję do kolejki: " + msg);
+                                    pendingMessages.offer(msg);
+                                }
+                            }
+                            if (uiReady) {
+                                Platform.runLater(() -> processPendingMessages());
+                            }
+                        } else if (message == null) {
+                            System.out.println("Odebrano null, rozłączono");
+                            break;
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Błąd w odbiorze wiadomości: " + e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Błąd w wątku odbierania: " + e.getMessage());
+                Platform.runLater(() -> showError("Utracono połączenie z serwerem"));
             }
-        } else {
-            // Karta nie pasuje - animacja odrzucenia
-            StackPane kartaView = karta.getView();
-            kartaView.setTranslateX(-20);
-            javafx.animation.Timeline anim = new javafx.animation.Timeline(
-                    new javafx.animation.KeyFrame(
-                            javafx.util.Duration.millis(100),
-                            event -> kartaView.setTranslateX(0)
-                    )
-            );
-            anim.play();
-        }
+        });
+        messageReceiver.setDaemon(true);
+        messageReceiver.start();
     }
+    private void removeCardFromHand(Card card) {
+        Platform.runLater(() -> {
+            // Znajdź i usuń kartę z ręki
+            for (int i = 0; i < kartyGracza.size(); i++) {
+                if (kartyGracza.get(i).getColor().equals(card.getColor()) &&
+                        kartyGracza.get(i).getValue().equals(card.getValue())) {
+                    kartyGracza.remove(i);
 
-    private void turaPrzeciwnika() {
-        if (liczbaKartPrzeciwnika == 0) {
-            instrukcja.setText("PRZECIWNIK WYGRAŁ!");
-            instrukcja.setStyle("-fx-text-fill: red; -fx-font-size: 48px; -fx-font-weight: bold;");
+                    // Usuń wizualną reprezentację
+                    if (i < rekaGracza.getChildren().size()) {
+                        rekaGracza.getChildren().remove(i);
+                    }
+
+                    labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+                    break;
+                }
+            }
+        });
+    }
+    private void processPendingMessages() {
+        if (!uiReady) {
+            System.out.println("UI niegotowe, pomijam przetwarzanie");
             return;
         }
 
-        Random random = new Random();
-        if (random.nextBoolean() && liczbaKartPrzeciwnika > 0) {
-            liczbaKartPrzeciwnika--;
-            String[] kolory = {"CZERWONY", "NIEBIESKI", "ZIELONY", "ŻÓŁTY"};
-            String[] wartosci = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "STOP", "+2"};
-            Card nowaKarta = new Card(
-                    kolory[random.nextInt(kolory.length)],
-                    wartosci[random.nextInt(wartosci.length)]
-            );
-            stol.getChildren().clear();
-            wierzchniaKarta = nowaKarta;
-            stol.getChildren().add(nowaKarta.getView());
-            instrukcja.setText("Przeciwnik zagrał!");
-            javafx.animation.Timeline delay = new javafx.animation.Timeline(
-                    new javafx.animation.KeyFrame(
-                            javafx.util.Duration.seconds(1),
-                            e -> instrukcja.setText("Twoja kolej!")
-                    )
-            );
-            delay.play();
-        } else {
-            liczbaKartPrzeciwnika++;
-            instrukcja.setText("Przeciwnik dobrał kartę");
+        while (!pendingMessages.isEmpty()) {
+            String message = pendingMessages.poll();
+            System.out.println("Przetwarzam wiadomość z kolejki: " + message);
+            handleServerMessage(message);
+        }
+    }
 
-            javafx.animation.Timeline delay = new javafx.animation.Timeline(
-                    new javafx.animation.KeyFrame(
-                            javafx.util.Duration.seconds(1),
-                            e -> instrukcja.setText("Twoja kolej!")
-                    )
-            );
-            delay.play();
+    private void handleServerMessage(String message) {
+        System.out.println("=== ROZPOCZĘCIE handleServerMessage ===");
+        System.out.println("Oryginalna wiadomość: [" + message + "]");
+        String trimmed = message.trim();
+        System.out.println("Po przycięciu: [" + trimmed + "]");
+        if (trimmed.startsWith("INIT_GAME ")) {
+            System.out.println("Otrzymano inicjalizację gry");
+            handleGameInitialization(trimmed.substring(10));
+        }
+        else if (trimmed.startsWith("HAND ")) {
+            String handData = trimmed.substring(5);
+            System.out.println("Dane ręki: " + handData);
+            updateHand(handData);
+        }
+        else if (trimmed.startsWith("TOP_CARD ")) {
+            System.out.println("Aktualizacja wierzchniej karty");
+            updateTopCard(trimmed.substring(9));
+        }
+        else if (trimmed.startsWith("PLAYERS ")) {
+            System.out.println("Aktualizacja graczy");
+            updateOpponents(trimmed.substring(8));
+        }
+        else if (trimmed.startsWith("TURN ")) {
+            System.out.println("Aktualizacja tury");
+            updateTurn(trimmed.substring(5));
+        }
+        else if (trimmed.startsWith("PLAYED ")) {
+            handleCardPlayed(trimmed.substring(7));
+        }
+        else if (trimmed.startsWith("DREW ")) {
+            handleCardDrawn(trimmed.substring(5));
+        }
+        else if (trimmed.startsWith("WINNER ")) {
+            handleWinner(trimmed.substring(7));
+        }
+        else if (trimmed.startsWith("CHOOSE_COLOR")) {
+            promptColorChoice();
+        }
+        else if (trimmed.startsWith("WILD_COLOR ")) {
+            updateWildColor(trimmed.substring(11));
+        }
+        else if (trimmed.startsWith("ERROR")) {
+            showError(trimmed);
+        }
+        else if (trimmed.startsWith("GAME_ENDED")) {
+            gameEnded();
+        }
+        else {
+            System.out.println("Nieznana wiadomość: " + trimmed);
         }
 
-        wyswietlKartyPrzeciwnika();
-        aktualizujLabele();
+        System.out.println("=== ZAKOŃCZENIE handleServerMessage ===\n");
+    }
+
+    private void handleGameInitialization(String initData) {
+        System.out.println("Inicjalizacja gry: " + initData);
+
+        String[] parts = initData.split(" ", 4);
+        if (parts.length != 4) {
+            System.err.println("Błędny format INIT_GAME: " + initData);
+            return;
+        }
+
+        String topCard = parts[0];
+        String currentPlayer = parts[1];
+        String opponents = parts[2];
+        String hand = parts[3];
+
+        updateTopCard(topCard);
+        updateTurn(currentPlayer);
+        updateOpponents(opponents);
+        updateHand(hand);
+
+    }
+
+    private void updateHand(String handStr) {
+        System.out.println("updateHand wywołane z: " + handStr);
+
+        Platform.runLater(() -> {
+            try {
+                if (rekaGracza == null) {
+                    System.err.println("ERROR: rekaGracza is null!");
+                    return;
+                }
+
+                kartyGracza.clear();
+                rekaGracza.getChildren().clear();
+
+                String[] cards = handStr.split(",");
+                System.out.println("Liczba kart: " + cards.length);
+
+                for (String cardStr : cards) {
+                    cardStr = cardStr.trim();
+                    if (!cardStr.isEmpty()) {
+                        try {
+                            Card card = Card.fromString(cardStr);
+                            kartyGracza.add(card);
+
+                            StackPane kartaView = card.getView();
+                            kartaView.setDisable(!myTurn || waitingForColorChoice);
+                            kartaView.setStyle("-fx-cursor: " + (myTurn && !waitingForColorChoice ? "hand" : "default") + ";");
+
+                            if (myTurn && !waitingForColorChoice) {
+                                kartaView.setOnMouseClicked(e -> playCard(card));
+                            } else {
+                                kartaView.setOnMouseClicked(null);
+                            }
+
+                            rekaGracza.getChildren().add(kartaView);
+                        } catch (Exception e) {
+                            System.err.println("Błąd parsowania karty: " + cardStr);
+                        }
+                    }
+                }
+
+                labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+                System.out.println("Zaktualizowano rękę, liczba kart: " + kartyGracza.size());
+            } catch (Exception e) {
+                System.err.println("Błąd w updateHand: " + e.getMessage());
+            }
+        });
+    }
+
+    private void updateTopCard(String cardStr) {
+        try {
+            stol.getChildren().clear();
+            String[] parts = cardStr.split(":");
+            if (parts.length == 2) {
+                wierzchniaKarta = new Card(parts[0], parts[1]);
+                stol.getChildren().add(wierzchniaKarta.getView());
+                System.out.println("Wierzchnia karta ustawiona: " + parts[0] + " " + parts[1]);
+            }
+        } catch (Exception e) {
+            System.err.println("Błąd parsowania top card: " + cardStr);
+        }
+    }
+
+    private void updateOpponents(String playersStr) {
+        przeciwnicyKarty.clear();
+        String[] players = playersStr.split(",");
+
+        for (String player : players) {
+            if (!player.isEmpty()) {
+                String[] parts = player.split(":");
+                if (parts.length == 2) {
+                    przeciwnicyKarty.put(parts[0], Integer.parseInt(parts[1]));
+                }
+            }
+        }
+
+        updateOpponentDisplays();
+    }
+
+    private void updateOpponentDisplays() {
+
+    }
+
+    private void updateTurn(String player) {
+        Platform.runLater(() -> {
+            currentPlayer = player;
+            myTurn = player.equals(nickname);
+
+            if (myTurn) {
+                labelTura.setText("Twoja tura!");
+                instrukcja.setText("Wybierz kartę do zagrania lub kliknij talię, aby dobrać kartę");
+                //Odblokowywanie kart
+                for (var child : rekaGracza.getChildren()) {
+                    child.setDisable(false);
+                    child.setStyle("-fx-cursor: hand;");
+                }
+            } else {
+                labelTura.setText("Tura gracza: " + player);
+                instrukcja.setText("Oczekiwanie na ruch gracza " + player);
+                //Blokowanie kart
+                for (var child : rekaGracza.getChildren()) {
+                    child.setDisable(true);
+                    child.setStyle("-fx-cursor: default;");
+                }
+            }
+        });
+    }
+
+    private void handleCardPlayed(String playInfo) {
+        System.out.println("Otrzymano PLAYED: " + playInfo);
+        String[] parts = playInfo.split(" ");
+        if (parts.length == 2) {
+            String player = parts[0];
+            String cardStr = parts[1];
+
+            if (player.equals(nickname)) {
+                try {
+                    Card playedCard = Card.fromString(cardStr);
+                    Platform.runLater(() -> {
+                        for (int i = 0; i < kartyGracza.size(); i++) {
+                            Card c = kartyGracza.get(i);
+                            if (c.getColor().equals(playedCard.getColor()) &&
+                                    c.getValue().equals(playedCard.getValue())) {
+                                kartyGracza.remove(i);
+
+                                if (i < rekaGracza.getChildren().size()) {
+                                    rekaGracza.getChildren().remove(i);
+                                }
+                                labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+                                break;
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    System.err.println("Błąd przetwarzania zagranej karty: " + e.getMessage());
+                }
+            }
+
+            if (!player.equals(nickname)) {
+                Platform.runLater(() -> {
+                    instrukcja.setText("Gracz " + player + " zagrał kartę");
+                });
+            }
+        }
+    }
+
+    private void handleCardDrawn(String cardStr) {
+        instrukcja.setText("Dobrałeś kartę");
+    }
+
+    private void handleWinner(String winner) {
+        if (winner.equals(nickname)) {
+            instrukcja.setText("WYGRAŁEŚ!");
+            instrukcja.setStyle("-fx-text-fill: gold; -fx-font-size: 48px; -fx-font-weight: bold;");
+        } else {
+            instrukcja.setText("Wygrał gracz " + winner);
+            instrukcja.setStyle("-fx-text-fill: silver; -fx-font-size: 36px; -fx-font-weight: bold;");
+        }
+
+        zablokujKarty();
+
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Koniec gry!");
+            alert.setHeaderText(null);
+            alert.setContentText(winner.equals(nickname) ?
+                    "Gratulacje! Wygrałeś grę!" :
+                    "Wygrał gracz " + winner);
+            alert.showAndWait();
+        });
+    }
+
+    private void gameEnded() {
+        gameActive.set(false);
+        instrukcja.setText("Gra zakończona");
+    }
+
+    private void promptColorChoice() {
+        waitingForColorChoice = true;
+        instrukcja.setText("Wybierz kolor: [R]ed, [G]reen, [B]lue, [Y]ellow");
+
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Wybierz kolor");
+            alert.setHeaderText("Zagrałeś kartę WILD");
+            alert.setContentText("Wybierz kolor:");
+
+            ButtonType redButton = new ButtonType("Czerwony");
+            ButtonType greenButton = new ButtonType("Zielony");
+            ButtonType blueButton = new ButtonType("Niebieski");
+            ButtonType yellowButton = new ButtonType("Żółty");
+
+            alert.getButtonTypes().setAll(redButton, greenButton, blueButton, yellowButton);
+
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent()) {
+                String color = "";
+                if (result.get() == redButton) color = "RED";
+                else if (result.get() == greenButton) color = "GREEN";
+                else if (result.get() == blueButton) color = "BLUE";
+                else if (result.get() == yellowButton) color = "YELLOW";
+
+                if (!color.isEmpty()) {
+                    clientConnection.sendMessage("WILD_COLOR " + color);
+                    waitingForColorChoice = false;
+                }
+            }
+        });
+    }
+
+    private void updateWildColor(String color) {
+        instrukcja.setText("Kolor zmieniony na: " + color);
+    }
+
+    @FXML
+    private void handleDrawCard() {
+        if (myTurn && !waitingForColorChoice) {
+            clientConnection.sendMessage("DRAW");
+        }
+    }
+
+    private void playCard(Card card) {
+        if (myTurn && !waitingForColorChoice) {
+            String cardStr = card.getColor() + ":" + card.getValue();
+            clientConnection.sendMessage("PLAY " + cardStr);
+            System.out.println("Wysłano kartę do serwera: " + cardStr);
+
+            myTurn = false;
+            for (var child : rekaGracza.getChildren()) {
+                child.setDisable(true);
+            }
+
+            instrukcja.setText("Czekam na odpowiedź serwera...");
+        }
+    }
+    //Debugging
+    private void showError(String message) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Błąd");
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
+    }
+
+    private void zablokujKarty() {
+        for (var child : rekaGracza.getChildren()) {
+            child.setDisable(true);
+            child.setStyle("-fx-opacity: 0.5; -fx-cursor: default;");
+        }
+    }
+
+    @FXML
+    private void handleQuit() {
+        gameActive.set(false);
+        if (messageReceiver != null) {
+            messageReceiver.interrupt();
+        }
+        if (clientConnection != null) {
+            clientConnection.sendMessage("EXIT " + nickname);
+            clientConnection.disconnect();
+        }
     }
 }
