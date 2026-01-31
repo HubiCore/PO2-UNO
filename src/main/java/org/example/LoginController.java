@@ -26,9 +26,13 @@ public class LoginController {
     private String savedLoginText;
     private String savedPassword;
     private ClientConnection clientConnection;
+    private AuthenticationService authService; // Dodajemy referencję do AuthenticationService
 
     @FXML
     public void initialize() {
+        // Inicjalizujemy AuthenticationService
+        authService = new AuthenticationService();
+
         // Max 20 znaków dla loginu - tylko litery
         UnaryOperator<TextFormatter.Change> loginFilter = change -> {
             String newText = change.getControlNewText();
@@ -95,15 +99,21 @@ public class LoginController {
         }
 
         System.out.println("Zapisany login: " + savedLoginText);
-        System.out.println("Hasło: " + savedPassword);
+
+        // Użyj metody hashowania z AuthenticationService
+        // UWAGA: AuthenticationService musi mieć publiczną metodę do hashowania
+        // Jeśli nie ma, zobacz niżej jak ją dodać
+
+        String hashedPassword = hashPasswordUsingAuthService(savedPassword);
+        System.out.println("Hash hasła: " + hashedPassword);
 
         // Utwórz połączenie z serwerem
         clientConnection = new ClientConnection();
         boolean connected = clientConnection.connect();
 
         if (connected) {
-            // Wysyłamy dane logowania
-            String loginData = "LOGIN " + savedLoginText + ":" + savedPassword;
+            // Wysyłamy dane logowania z zahaszowanym hasłem
+            String loginData = "LOGIN " + savedLoginText + ":" + hashedPassword;
             clientConnection.sendMessage(loginData);
 
             // Tutaj możesz dodać oczekiwanie na odpowiedź od serwera
@@ -111,6 +121,44 @@ public class LoginController {
             switch_to_lobby(event);
         } else {
             showError("Nie udało się połączyć z serwerem");
+        }
+    }
+
+    // Metoda wykorzystująca AuthenticationService do hashowania
+    private String hashPasswordUsingAuthService(String password) {
+        // Opcja 1: Jeśli AuthenticationService ma publiczną metodę hashPassword()
+        try {
+            // Pobierz hash metodą refleksji (jeśli metoda jest prywatna)
+            java.lang.reflect.Method method = AuthenticationService.class.getDeclaredMethod("hashPassword", String.class);
+            method.setAccessible(true);
+            return (String) method.invoke(authService, password);
+        } catch (Exception e) {
+            // Jeśli nie ma takiej metody, musimy ją dodać do AuthenticationService
+            System.err.println("AuthenticationService nie ma metody hashPassword: " + e.getMessage());
+
+            // Fallback - użyj lokalnej implementacji MD5
+            return fallbackHashPassword(password);
+        }
+    }
+
+    // Fallback jeśli AuthenticationService nie ma metody hashowania
+    private String fallbackHashPassword(String password) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] hashBytes = md.digest(password.getBytes());
+
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashBytes) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            System.err.println("Błąd hashowania: " + e.getMessage());
+            return password; // W ostateczności zwróć niezhashowane hasło
         }
     }
 
