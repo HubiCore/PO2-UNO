@@ -14,7 +14,7 @@
        <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#turn_off" prefHeight="100.0" prefWidth="230.0" text="Wyjdź" />
       <ImageView fitHeight="170.0" fitWidth="120.0" layoutX="855.0" layoutY="210.0" pickOnBounds="true" preserveRatio="true">
           <image>
-              <Image url="@assets/textures/card_template.png" />
+              <Image url="@assets/textures/card_back.png" />
           </image>
       </ImageView>
    </children>

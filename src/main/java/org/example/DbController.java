@@ -35,7 +35,6 @@ public class DbController {
         winsColumn.setCellValueFactory(new PropertyValueFactory<>("wins"));
         scoreTableView.setItems(scoreData);
 
-        // Połączenie z serwerem i pobranie danych
         connectAndLoadData();
     }
 
@@ -62,33 +61,38 @@ public class DbController {
 
     private void processServerResponse(String response) {
         scoreData.clear();
-        String[] lines = response.split("\n");
-        for (String line : lines) {
-            line = line.trim();
-            if (line.isEmpty()) continue;
-            line = line.replaceFirst("^TOP5\\s*", "");
+
+        if (response.startsWith("TOP5 ")) {
+            response = response.substring(5).trim();
+        }
+        System.out.println("Server response: " + response);
+
+        String[] records = response.split("/");
+
+        for (String record : records) {
+            record = record.trim();
+            if (record.isEmpty()) continue;
+
+            System.out.println("Processing record: " + record);
 
             try {
-                String withoutPosition = line.replaceFirst("^\\d+\\.\\s*", "");
+                String withoutPosition = record.replaceFirst("^\\d+\\.\\s*", "");
 
                 String[] parts = withoutPosition.split(" - ");
                 if (parts.length >= 2) {
                     String playerName = parts[0].trim();
                     String winsPart = parts[1].trim();
-                    int wins = 0;
-                    if (winsPart.contains("wygranych")) {
-                        String winsStr = winsPart.split("\\s+")[0];
-                        wins = Integer.parseInt(winsStr);
-                    }
+                    String winsStr = winsPart.split("\\s+")[0];
+                    int wins = Integer.parseInt(winsStr);
+
                     scoreData.add(new PlayerScore(playerName, wins));
                 }
             } catch (Exception e) {
-                System.err.println("Błąd przetwarzania linii: " + line);
+                System.err.println("Błąd przetwarzania rekordu: " + record);
                 e.printStackTrace();
             }
         }
     }
-
     public void addPlayerScore(String playerName, int wins) {
         scoreData.add(new PlayerScore(playerName, wins));
     }
@@ -122,7 +126,6 @@ public class DbController {
 
     @FXML
     private void refreshData(ActionEvent event) {
-        // Dodaj przycisk odświeżania w FXML jeśli chcesz
         scoreData.clear();
         if (clientConnection != null && clientConnection.isConnected()) {
             clientConnection.disconnect();

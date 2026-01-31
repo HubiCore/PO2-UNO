@@ -101,7 +101,25 @@ public class UnoController implements Initializable {
         messageReceiver.setDaemon(true);
         messageReceiver.start();
     }
+    private void removeCardFromHand(Card card) {
+        Platform.runLater(() -> {
+            // Znajdź i usuń kartę z ręki
+            for (int i = 0; i < kartyGracza.size(); i++) {
+                if (kartyGracza.get(i).getColor().equals(card.getColor()) &&
+                        kartyGracza.get(i).getValue().equals(card.getValue())) {
+                    kartyGracza.remove(i);
 
+                    // Usuń wizualną reprezentację
+                    if (i < rekaGracza.getChildren().size()) {
+                        rekaGracza.getChildren().remove(i);
+                    }
+
+                    labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+                    break;
+                }
+            }
+        });
+    }
     private void processPendingMessages() {
         if (!uiReady) {
             System.out.println("UI niegotowe, pomijam przetwarzanie");
@@ -188,7 +206,6 @@ public class UnoController implements Initializable {
         updateOpponents(opponents);
         updateHand(hand);
 
-        instrukcja.setText("Gra rozpoczęta! Twoja tura: " + (myTurn ? "TAK" : "NIE"));
     }
 
     private void updateHand(String handStr) {
@@ -215,8 +232,6 @@ public class UnoController implements Initializable {
                             kartyGracza.add(card);
 
                             StackPane kartaView = card.getView();
-
-                            // Ustaw interaktywność w zależności od tury
                             kartaView.setDisable(!myTurn || waitingForColorChoice);
                             kartaView.setStyle("-fx-cursor: " + (myTurn && !waitingForColorChoice ? "hand" : "default") + ";");
 
@@ -272,43 +287,7 @@ public class UnoController implements Initializable {
     }
 
     private void updateOpponentDisplays() {
-        Platform.runLater(() -> {
-            List<String> opponents = new ArrayList<>(przeciwnicyKarty.keySet());
 
-            if (opponents.size() >= 3) {
-                labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
-                labelLewy.setText(opponents.get(1) + " (" + przeciwnicyKarty.get(opponents.get(1)) + ")");
-                labelPrawy.setText(opponents.get(2) + " (" + przeciwnicyKarty.get(opponents.get(2)) + ")");
-
-                updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
-                updateHandDisplay(rekaLewego, przeciwnicyKarty.get(opponents.get(1)));
-                updateHandDisplay(rekaPrawego, przeciwnicyKarty.get(opponents.get(2)));
-            } else if (opponents.size() == 2) {
-                labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
-                labelLewy.setText(opponents.get(1) + " (" + przeciwnicyKarty.get(opponents.get(1)) + ")");
-                labelPrawy.setText("");
-
-                updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
-                updateHandDisplay(rekaLewego, przeciwnicyKarty.get(opponents.get(1)));
-                rekaPrawego.getChildren().clear();
-            } else if (opponents.size() == 1) {
-                labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
-                labelLewy.setText("");
-                labelPrawy.setText("");
-
-                updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
-                rekaLewego.getChildren().clear();
-                rekaPrawego.getChildren().clear();
-            }
-        });
-    }
-
-    private void updateHandDisplay(HBox handBox, int cardCount) {
-        handBox.getChildren().clear();
-        for (int i = 0; i < cardCount; i++) {
-            Card dummyCard = new Card("RED", "0");
-            handBox.getChildren().add(dummyCard.getBackView());
-        }
     }
 
     private void updateTurn(String player) {
@@ -337,13 +316,39 @@ public class UnoController implements Initializable {
     }
 
     private void handleCardPlayed(String playInfo) {
+        System.out.println("Otrzymano PLAYED: " + playInfo);
         String[] parts = playInfo.split(" ");
         if (parts.length == 2) {
             String player = parts[0];
             String cardStr = parts[1];
 
+            if (player.equals(nickname)) {
+                try {
+                    Card playedCard = Card.fromString(cardStr);
+                    Platform.runLater(() -> {
+                        for (int i = 0; i < kartyGracza.size(); i++) {
+                            Card c = kartyGracza.get(i);
+                            if (c.getColor().equals(playedCard.getColor()) &&
+                                    c.getValue().equals(playedCard.getValue())) {
+                                kartyGracza.remove(i);
+
+                                if (i < rekaGracza.getChildren().size()) {
+                                    rekaGracza.getChildren().remove(i);
+                                }
+                                labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+                                break;
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    System.err.println("Błąd przetwarzania zagranej karty: " + e.getMessage());
+                }
+            }
+
             if (!player.equals(nickname)) {
-                instrukcja.setText("Gracz " + player + " zagrał kartę");
+                Platform.runLater(() -> {
+                    instrukcja.setText("Gracz " + player + " zagrał kartę");
+                });
             }
         }
     }
@@ -428,9 +433,16 @@ public class UnoController implements Initializable {
             String cardStr = card.getColor() + ":" + card.getValue();
             clientConnection.sendMessage("PLAY " + cardStr);
             System.out.println("Wysłano kartę do serwera: " + cardStr);
+
+            myTurn = false;
+            for (var child : rekaGracza.getChildren()) {
+                child.setDisable(true);
+            }
+
+            instrukcja.setText("Czekam na odpowiedź serwera...");
         }
     }
-
+    //Debugging
     private void showError(String message) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
