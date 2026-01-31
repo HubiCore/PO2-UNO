@@ -74,7 +74,7 @@ public class DataBase {
             while (rs.next()) {
                 String nazwa = rs.getString("username");
                 int wygrane = rs.getInt("liczba_wygranych");
-                result.append(position).append(". ").append(nazwa).append(" - ").append(wygrane).append(" wygranych\n");
+                result.append(position).append(". ").append(nazwa).append(" - ").append(wygrane).append(" wygranych/");
                 position++;
             }
 
