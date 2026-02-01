@@ -210,6 +210,7 @@ public class LoginController {
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         stage.setScene(scene);
+        stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
     }

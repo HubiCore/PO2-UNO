@@ -24,6 +24,7 @@ public class SceneController {
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         stage.setScene(scene);
+        stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
     }
@@ -35,6 +36,7 @@ public class SceneController {
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         stage.setScene(scene);
+        stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
     }
@@ -46,6 +48,7 @@ public class SceneController {
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style_log_join.css").toExternalForm());
         stage.setScene(scene);
+        stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
     }
@@ -57,6 +60,7 @@ public class SceneController {
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         stage.setScene(scene);
+        stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
     }
@@ -68,6 +72,7 @@ public class SceneController {
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         stage.setScene(scene);
+        stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
     }
@@ -83,6 +88,7 @@ public class SceneController {
         scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
         stage.setScene(scene);
+        stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
 
