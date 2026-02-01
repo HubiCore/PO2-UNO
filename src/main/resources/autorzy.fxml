@@ -7,35 +7,40 @@
 
 <AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.SceneController">
    <children>
-      <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="1200" layoutY="100" pickOnBounds="true" preserveRatio="true">
+      <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="1200.0" layoutY="175.0" pickOnBounds="true" preserveRatio="true">
        <image>
            <Image url="@assets/textures/hubertW.jpg" />
        </image>
    </ImageView>
-      <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="400" layoutY="100" pickOnBounds="true" preserveRatio="true">
+      <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="400.0" layoutY="175.0" pickOnBounds="true" preserveRatio="true">
           <image>
               <Image url="@assets/textures/hubertS.jpg" />
           </image>
       </ImageView>
-      <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="859.0" layoutY="100.0" pickOnBounds="true" preserveRatio="true">
+      <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="815.0" layoutY="175.0" pickOnBounds="true" preserveRatio="true">
           <image>
-              <Image url="@assets/textures/krzywy.png" />
+              <Image url="@assets/textures/krzywy2.jpg" />
           </image>
       </ImageView>
        <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
-      <Text fill="WHITE" layoutX="464.0" layoutY="422.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Hubert Stojek">
+      <Text fill="WHITE" layoutX="464.0" layoutY="501.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Hubert Stojek">
          <font>
             <Font size="15.0" />
          </font>
       </Text>
-      <Text fill="WHITE" layoutX="866.0" layoutY="423.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Andrzej Raumiagi">
+      <Text fill="WHITE" layoutX="866.0" layoutY="502.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Andrzej Raumiagi">
          <font>
             <Font size="15.0" />
          </font>
       </Text>
-      <Text fill="WHITE" layoutX="1250.0" layoutY="423.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Hubert Wilczyński">
+      <Text fill="WHITE" layoutX="1250.0" layoutY="501.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Hubert Wilczyński">
          <font>
             <Font size="15.0" />
+         </font>
+      </Text>
+      <Text fill="WHITE" layoutX="811.0" layoutY="99.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Autorzy:">
+         <font>
+            <Font size="60.0" />
          </font>
       </Text>
    </children>

@@ -585,6 +585,7 @@ public class UnoController implements Initializable {
                                     scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
                                     stage.setScene(scene);
                                     stage.setFullScreen(true);
+                                    stage.setFullScreenExitHint("");
                                     stage.show();
 
                                     // Zamknij połączenie z serwerem
