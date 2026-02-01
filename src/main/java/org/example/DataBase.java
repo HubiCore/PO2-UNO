@@ -2,7 +2,20 @@ package org.example;
 
 import java.sql.*;
 
+/**
+ * Klasa DataBase zarządza połączeniem z bazą danych SQLite oraz operacjami na tabeli graczy.
+ * Zawiera metody do łączenia się z bazą, tworzenia tabel, dodawania graczy, weryfikacji istnienia,
+ * pobierania hashów haseł, zwiększania liczby wygranych oraz pobierania rankingów.
+ */
 public class DataBase {
+
+    /**
+     * Nawiązuje połączenie z bazą danych SQLite o podanej ścieżce.
+     * W przypadku powodzenia, automatycznie tworzy tabelę graczy (jeśli nie istnieje).
+     *
+     * @param dbPath ścieżka do pliku bazy danych SQLite
+     * @return obiekt Connection reprezentujący połączenie z bazą danych lub null w przypadku błędu
+     */
     public Connection connect(String dbPath) {
         Connection conn = null;
         try {
@@ -18,6 +31,13 @@ public class DataBase {
         return conn;
     }
 
+    /**
+     * Prywatna metoda tworząca tabelę gracz w bazie danych, jeśli nie istnieje.
+     * Tabela zawiera kolumny: id (klucz główny), username (unikalny), password_hash, liczba_wygranych.
+     *
+     * @param conn aktywny obiekt Connection do bazy danych
+     * @throws SQLException jeśli wystąpi błąd podczas wykonywania zapytania SQL
+     */
     private void createTableWithPassword(Connection conn) throws SQLException {
         String sql = "CREATE TABLE IF NOT EXISTS gracz (" +
                 "id INTEGER PRIMARY KEY AUTOINCREMENT," +
@@ -30,6 +50,13 @@ public class DataBase {
         }
     }
 
+    /**
+     * Sprawdza, czy gracz o podanej nazwie istnieje w bazie danych.
+     *
+     * @param conn aktywny obiekt Connection do bazy danych
+     * @param name nazwa gracza do sprawdzenia
+     * @return true jeśli gracz istnieje, false w przeciwnym przypadku lub w przypadku błędu
+     */
     public boolean is_player(Connection conn, String name) {
         String sql = "SELECT COUNT(*) FROM gracz WHERE username = ?";
 
@@ -49,7 +76,13 @@ public class DataBase {
         return false;
     }
 
-    // Metoda do pobierania hasha hasła
+    /**
+     * Pobiera hash hasła dla podanego użytkownika z bazy danych.
+     *
+     * @param conn aktywny obiekt Connection do bazy danych
+     * @param username nazwa użytkownika, dla którego pobierany jest hash
+     * @return hash hasła jako String lub null jeśli użytkownik nie istnieje lub wystąpił błąd
+     */
     public String getPasswordHash(Connection conn, String username) {
         String sql = "SELECT password_hash FROM gracz WHERE username = ?";
 
@@ -68,7 +101,15 @@ public class DataBase {
         return null;
     }
 
-    // Atomiczne tworzenie użytkownika (zwraca true jeśli udało się utworzyć, false jeśli już istnieje)
+    /**
+     * Atomowo tworzy nowego użytkownika, jeśli nie istnieje w bazie danych.
+     * Wykorzystuje klauzulę INSERT OR IGNORE, aby uniknąć konfliktów duplikatów.
+     *
+     * @param conn aktywny obiekt Connection do bazy danych
+     * @param name nazwa nowego użytkownika
+     * @param passwordHash hash hasła nowego użytkownika
+     * @return true jeśli użytkownik został utworzony, false jeśli już istniał lub wystąpił błąd
+     */
     public boolean createUserIfNotExists(Connection conn, String name, String passwordHash) {
         String sql = "INSERT OR IGNORE INTO gracz (username, password_hash, liczba_wygranych) VALUES (?, ?, 0)";
 
@@ -91,12 +132,25 @@ public class DataBase {
         }
     }
 
-    // Metoda do tworzenia użytkownika (bez sprawdzania czy istnieje - dla kompatybilności)
+    /**
+     * Dodaje nowego gracza do bazy danych bez hasła (dla zachowania kompatybilności).
+     * Wywołuje przeciążoną metodę Insert_User z pustym hasłem.
+     *
+     * @param conn aktywny obiekt Connection do bazy danych
+     * @param name nazwa nowego gracza
+     */
     public void Insert_User(Connection conn, String name) {
         Insert_User(conn, name, ""); // Domyślne puste hasło
     }
 
-    // Metoda do tworzenia użytkownika z hasłem
+    /**
+     * Dodaje nowego gracza do bazy danych z podanym hashem hasła.
+     * Metoda najpierw sprawdza, czy gracz już istnieje (używając is_player).
+     *
+     * @param conn aktywny obiekt Connection do bazy danych
+     * @param name nazwa nowego gracza
+     * @param passwordHash hash hasła nowego gracza
+     */
     public void Insert_User(Connection conn, String name, String passwordHash) {
         if (!is_player(conn, name)) {
             String sql = "INSERT INTO gracz (username, password_hash, liczba_wygranych) VALUES (?, ?, 0)";
@@ -114,6 +168,12 @@ public class DataBase {
         }
     }
 
+    /**
+     * Zwiększa liczbę wygranych dla podanego gracza o 1.
+     *
+     * @param conn aktywny obiekt Connection do bazy danych
+     * @param name nazwa gracza, dla którego zwiększana jest liczba wygranych
+     */
     public void increaseWins(Connection conn, String name) {
         String sql = "UPDATE gracz SET liczba_wygranych = liczba_wygranych + 1 WHERE username = ?";
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -130,6 +190,13 @@ public class DataBase {
         }
     }
 
+    /**
+     * Pobiera ranking 5 najlepszych graczy na podstawie liczby wygranych.
+     *
+     * @param conn aktywny obiekt Connection do bazy danych
+     * @return String z listą 5 najlepszych graczy w formacie: "1. nazwa1 - liczba1 wygranych/2. nazwa2 - liczba2 wygranych/..."
+     *         lub komunikat "Brak danych o graczach." jeśli tabela jest pusta
+     */
     public String Top5_Best(Connection conn) {
         StringBuilder result = new StringBuilder();
         String sql = "SELECT username, liczba_wygranych FROM gracz ORDER BY liczba_wygranych DESC LIMIT 5";

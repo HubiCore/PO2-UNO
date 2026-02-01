@@ -8,14 +8,37 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Główna klasa serwera gry UNO.
+ * Serwer obsługuje połączenia klientów, zarządza pokojami gry, logiką gry
+ * oraz komunikacją z bazą danych użytkowników.
+ * Uruchamia się na porcie 2137 i tworzy osobny wątek dla każdego klienta.
+ *
+ */
 public class UnoServer extends Thread {
+    /** Połączenie z bazą danych */
     private Connection conn;
+
+    /** Instancja bazy danych do zarządzania użytkownikami i wynikami */
     private DataBase db;
+
+    /** Mapa przechowująca połączonych klientów (nickname -> ClientHandler) */
     private static Map<String, ClientHandler> connectedClients = new ConcurrentHashMap<>();
+
+    /** Mapa przechowująca status gotowości klientów (nickname -> status) */
     private static Map<String, String> clientStatus = new ConcurrentHashMap<>(); // "READY", "NOT_READY"
+
+    /** Mapa przechowująca pokoje gry (roomId -> GameRoom) */
     private static Map<Integer, GameRoom> gameRooms = new ConcurrentHashMap<>(); // Nowa mapa pokoi
+
+    /** Licznik do generowania kolejnych identyfikatorów pokojów */
     private static int nextRoomId = 1;
 
+    /**
+     * Główna metoda uruchamiająca serwer.
+     * Nasłuchuje na porcie 2137, akceptuje połączenia klientów
+     * i uruchamia dla każdego osobny wątek ClientHandler.
+     */
     public void run() {
         db = new DataBase();
         conn = db.connect("src/main/resources/baza.sql");
@@ -50,14 +73,31 @@ public class UnoServer extends Thread {
         }
     }
 
-    // Klasa reprezentująca pokój gry
+    /**
+     * Klasa reprezentująca pokój gry UNO.
+     * Zarządza graczami w pokoju, stanem gry i logiką związaną z pokojem.
+     */
     static class GameRoom {
+        /** Identyfikator pokoju */
         private int roomId;
+
+        /** Lista graczy w pokoju */
         private List<String> players;
+
+        /** Bieżąca gra tocząca się w pokoju */
         private Game currentGame;
+
+        /** Flaga wskazująca czy gra jest w trakcie */
         private boolean gameInProgress;
+
+        /** Status pokoju: "WAITING", "FULL", "IN_PROGRESS" */
         private String roomStatus; // "WAITING", "FULL", "IN_PROGRESS"
 
+        /**
+         * Tworzy nowy pokój gry z określonym identyfikatorem.
+         *
+         * @param roomId identyfikator pokoju
+         */
         public GameRoom(int roomId) {
             this.roomId = roomId;
             this.players = new ArrayList<>();
@@ -65,6 +105,13 @@ public class UnoServer extends Thread {
             this.roomStatus = "WAITING";
         }
 
+        /**
+         * Dodaje gracza do pokoju, jeśli pokój nie jest pełny
+         * i gra nie jest w trakcie.
+         *
+         * @param player nick gracza
+         * @return true jeśli gracz został dodany, false w przeciwnym razie
+         */
         public boolean addPlayer(String player) {
             if (players.size() >= 4 || gameInProgress) {
                 return false;
@@ -76,6 +123,12 @@ public class UnoServer extends Thread {
             return true;
         }
 
+        /**
+         * Usuwa gracza z pokoju.
+         *
+         * @param player nick gracza do usunięcia
+         * @return true jeśli gracz został usunięty, false w przeciwnym razie
+         */
         public boolean removePlayer(String player) {
             boolean removed = players.remove(player);
             if (removed) {
@@ -86,6 +139,10 @@ public class UnoServer extends Thread {
             return removed;
         }
 
+        /**
+         * Rozpoczyna nową grę w pokoju, jeśli jest wystarczająco graczy
+         * (2-4) i żadna gra nie jest w trakcie.
+         */
         public void startGame() {
             if (players.size() >= 2 && players.size() <= 4 && !gameInProgress) {
                 currentGame = new Game(new ArrayList<>(players));
@@ -94,23 +151,70 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Kończy bieżącą grę i resetuje stan pokoju.
+         */
         public void endGame() {
             currentGame = null;
             gameInProgress = false;
             roomStatus = "WAITING";
         }
 
-        // Gettery i inne metody
+        /**
+         * Pobiera identyfikator pokoju.
+         *
+         * @return identyfikator pokoju
+         */
         public int getRoomId() { return roomId; }
+
+        /**
+         * Pobiera listę graczy w pokoju.
+         *
+         * @return lista nicków graczy
+         */
         public List<String> getPlayers() { return players; }
+
+        /**
+         * Pobiera bieżącą grę toczącą się w pokoju.
+         *
+         * @return instancja gry lub null jeśli gra nie jest aktywna
+         */
         public Game getGame() { return currentGame; }
+
+        /**
+         * Sprawdza czy gra jest w trakcie.
+         *
+         * @return true jeśli gra jest aktywna, false w przeciwnym razie
+         */
         public boolean isGameInProgress() { return gameInProgress; }
+
+        /**
+         * Pobiera status pokoju.
+         *
+         * @return status pokoju: "WAITING", "FULL", "IN_PROGRESS"
+         */
         public String getRoomStatus() { return roomStatus; }
+
+        /**
+         * Sprawdza czy pokój jest pełny (4 graczy).
+         *
+         * @return true jeśli pokój jest pełny, false w przeciwnym razie
+         */
         public boolean isFull() { return players.size() >= 4; }
+
+        /**
+         * Sprawdza czy pokój jest pusty.
+         *
+         * @return true jeśli pokój nie ma graczy, false w przeciwnym razie
+         */
         public boolean isEmpty() { return players.isEmpty(); }
     }
 
-    // Metody do zarządzania pokojami
+    /**
+     * Tworzy nowy pokój gry z kolejnym dostępnym ID.
+     *
+     * @return nowo utworzony pokój gry
+     */
     private static synchronized GameRoom createNewRoom() {
         int roomId = nextRoomId++;
         GameRoom room = new GameRoom(roomId);
@@ -119,6 +223,16 @@ public class UnoServer extends Thread {
         return room;
     }
 
+    /**
+     * Znajduje dostępny pokój dla gracza.
+     * Priorytety:
+     * 1. Pokój, w którym gracz już jest
+     * 2. Pokój z miejscem, który nie jest w trakcie gry
+     * 3. Nowy pokój jeśli nie ma dostępnych
+     *
+     * @param player nick gracza
+     * @return dostępny pokój gry
+     */
     private static GameRoom findAvailableRoomForPlayer(String player) {
         // 1. Spróbuj znaleźć pokój, w którym gracz już jest
         for (GameRoom room : gameRooms.values()) {
@@ -138,17 +252,41 @@ public class UnoServer extends Thread {
         return createNewRoom();
     }
 
-    // Pełna klasa Game z wszystkimi metodami
+    /**
+     * Klasa zarządzająca logiką gry UNO.
+     * Obsługuje talię, rozdawanie kart, turę graczy i specjalne karty.
+     */
     static class Game {
+        /** Lista graczy w grze */
         private List<String> players;
+
+        /** Mapa przechowująca karty w rękach graczy (gracz -> lista kart) */
         private Map<String, List<Cart>> hands;
+
+        /** Talia kart do dobierania */
         private List<Cart> deck;
+
+        /** Stos kart odrzuconych */
         private List<Cart> discardPile;
+
+        /** Indeks aktualnego gracza */
         private int currentPlayerIndex;
+
+        /** Kierunek gry: true = zgodnie z ruchem wskazówek zegara */
         private boolean direction; // true = clockwise
+
+        /** Aktualny kolor na stole */
         private String currentColor;
+
+        /** Aktualna wartość na stole */
         private String currentValue;
 
+        /**
+         * Tworzy nową grę dla podanej listy graczy.
+         * Inicjalizuje talię, rozdaje karty i ustala pierwszą kartę na stosie.
+         *
+         * @param players lista graczy biorących udział w grze
+         */
         public Game(List<String> players) {
             this.players = new ArrayList<>(players);
             this.hands = new HashMap<>();
@@ -178,6 +316,9 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Inicjalizuje talię kart UNO.
+         */
         private void initDeck() {
             String[] colors = {"RED", "GREEN", "BLUE", "YELLOW"};
             String[] values = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
@@ -194,10 +335,16 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Tasuje talię kart.
+         */
         private void shuffleDeck() {
             Collections.shuffle(deck);
         }
 
+        /**
+         * Rozdaje początkowe karty graczom (7 kart każdemu).
+         */
         private void dealCards() {
             for (String player : players) {
                 List<Cart> hand = new ArrayList<>();
@@ -208,6 +355,12 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Dobiera kartę z talii.
+         * Jeśli talia jest pusta, miesza stos kart odrzuconych (oprócz górnej karty).
+         *
+         * @return dobrana karta lub null jeśli nie ma kart
+         */
         private Cart drawFromDeck() {
             if (deck.isEmpty()) {
                 if (discardPile.size() > 1) {
@@ -221,18 +374,42 @@ public class UnoServer extends Thread {
             return deck.isEmpty() ? null : deck.remove(deck.size() - 1);
         }
 
+        /**
+         * Pobiera rękę (listę kart) dla określonego gracza.
+         *
+         * @param player nick gracza
+         * @return lista kart gracza lub null jeśli gracz nie istnieje
+         */
         public List<Cart> getHandForPlayer(String player) {
             return hands.get(player);
         }
 
+        /**
+         * Pobiera górną kartę ze stosu kart odrzuconych.
+         *
+         * @return górna karta lub null jeśli stos jest pusty
+         */
         public Cart getTopCard() {
             return discardPile.isEmpty() ? null : discardPile.get(discardPile.size() - 1);
         }
 
+        /**
+         * Pobiera nick aktualnego gracza (który ma turę).
+         *
+         * @return nick aktualnego gracza
+         */
         public String getCurrentPlayer() {
             return players.get(currentPlayerIndex);
         }
 
+        /**
+         * Próbuje zagrać kartę przez gracza.
+         * Sprawdza czy to tura gracza i czy karta może być zagrana.
+         *
+         * @param player nick gracza próbującego zagrać kartę
+         * @param card karta do zagrania
+         * @return true jeśli karta została zagrana pomyślnie, false w przeciwnym razie
+         */
         public boolean playCard(String player, Cart card) {
             System.out.println("Game.playCard: gracz " + player + " próbuje zagrać " + card);
 
@@ -287,11 +464,23 @@ public class UnoServer extends Thread {
             return false;
         }
 
+        /**
+         * Sprawdza czy karta może być zagrana na aktualną kartę na stole.
+         *
+         * @param card karta do zagrania
+         * @param topCard aktualna górna karta na stosie
+         * @return true jeśli karta może być zagrana, false w przeciwnym razie
+         */
         private boolean canPlayOn(Cart card, Cart topCard) {
             return card.getKolor().equals(currentColor) ||
                     card.getWartosc().equals(currentValue);
         }
 
+        /**
+         * Obsługuje efekty specjalnych kart.
+         *
+         * @param card zagrana karta specjalna
+         */
         private void handleSpecialCard(Cart card) {
             String value = card.getWartosc();
             switch (value) {
@@ -317,6 +506,9 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Przechodzi do następnego gracza zgodnie z kierunkiem gry.
+         */
         private void nextPlayer() {
             if (direction) {
                 currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
@@ -325,6 +517,12 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Pozwala graczowi dobrać kartę z talii.
+         *
+         * @param player nick gracza
+         * @return dobrana karta lub null jeśli talia jest pusta
+         */
         public Cart drawCardForPlayer(String player) {
             Cart card = drawFromDeck();
             if (card != null) {
@@ -333,34 +531,78 @@ public class UnoServer extends Thread {
             return card;
         }
 
+        /**
+         * Sprawdza czy gracz wygrał grę (nie ma kart w ręce).
+         *
+         * @param player nick gracza
+         * @return true jeśli gracz wygrał, false w przeciwnym razie
+         */
         public boolean hasPlayerWon(String player) {
             return hands.get(player).isEmpty();
         }
 
+        /**
+         * Pobiera listę graczy w grze.
+         *
+         * @return lista graczy
+         */
         public List<String> getPlayers() {
             return players;
         }
 
+        /**
+         * Pobiera mapę rąk wszystkich graczy.
+         *
+         * @return mapa (gracz -> lista kart)
+         */
         public Map<String, List<Cart>> getHands() {
             return hands;
         }
     }
 
+    /**
+     * Obsługuje połączenie z pojedynczym klientem.
+     * Zarządza komunikacją, autoryzacją i stanem gry dla klienta.
+     */
     static class ClientHandler extends Thread {
+        /** Gniazdo klienta */
         private Socket clientSocket;
+
+        /** Połączenie z bazą danych */
         private Connection conn;
+
+        /** Instancja bazy danych */
         private DataBase db;
+
+        /** Strumień wyjściowy do klienta */
         private PrintWriter out;
+
+        /** Strumień wejściowy od klienta */
         private BufferedReader in;
+
+        /** Nickname klienta */
         private String nickname;
+
+        /** ID pokoju, w którym znajduje się gracz */
         private int currentRoomId = -1; // ID pokoju, w którym znajduje się gracz
 
+        /**
+         * Tworzy nowy handler dla klienta.
+         *
+         * @param socket gniazdo klienta
+         * @param conn połączenie z bazą danych
+         * @param db instancja bazy danych
+         */
         public ClientHandler(Socket socket, Connection conn, DataBase db) {
             this.clientSocket = socket;
             this.conn = conn;
             this.db = db;
         }
 
+        /**
+         * Główna metoda obsługi klienta.
+         * Nasłuchuje na wiadomości od klienta i deleguje je do handlera.
+         */
         public void run() {
             try {
                 in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -378,6 +620,11 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Rozpoznaje i obsługuje polecenie od klienta.
+         *
+         * @param inputLine linia wejściowa od klienta
+         */
         private void handleInput(String inputLine) {
             if (inputLine.startsWith("LOGIN ")) {
                 handleLogin(inputLine.substring(6));
@@ -455,6 +702,11 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Obsługuje polecenie logowania klienta.
+         *
+         * @param loginData dane logowania w formacie "username:password_hash"
+         */
         private void handleLogin(String loginData) {
             System.out.println("=== SERWER: ROZPOCZĘCIE LOGOWANIA ===");
             String[] parts = loginData.split(":");
@@ -509,6 +761,11 @@ public class UnoServer extends Thread {
             loginUser(username);
         }
 
+        /**
+         * Kończy proces logowania i przypisuje użytkownika do pokoju.
+         *
+         * @param username nick użytkownika
+         */
         private void loginUser(String username) {
             System.out.println("Serwer: Logowanie użytkownika: " + username);
             this.nickname = username;
@@ -530,6 +787,9 @@ public class UnoServer extends Thread {
             System.out.println("Serwer: Login zakończony pomyślnie dla: " + username);
         }
 
+        /**
+         * Wysyła listę pokoi do klienta.
+         */
         private void sendRoomList() {
             StringBuilder roomList = new StringBuilder("ROOM_LIST ");
             for (GameRoom room : gameRooms.values()) {
@@ -543,6 +803,11 @@ public class UnoServer extends Thread {
             out.println(roomList.toString());
         }
 
+        /**
+         * Dołącza klienta do określonego pokoju.
+         *
+         * @param roomIdStr identyfikator pokoju jako ciąg znaków
+         */
         private void joinRoom(String roomIdStr) {
             try {
                 int roomId = Integer.parseInt(roomIdStr);
@@ -589,6 +854,9 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Tworzy nowy pokój i dołącza do niego klienta.
+         */
         private void createRoom() {
             GameRoom newRoom = createNewRoom();
             currentRoomId = newRoom.getRoomId();
@@ -597,6 +865,11 @@ public class UnoServer extends Thread {
             broadcastUserListToRoom(currentRoomId);
         }
 
+        /**
+         * Obsługuje polecenie gotowości klienta.
+         *
+         * @param nick nick gracza
+         */
         private void handleReady(String nick) {
             if (!nick.equals(nickname)) {
                 out.println("ERROR Invalid nickname");
@@ -639,6 +912,11 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Obsługuje polecenie "niegotowości" klienta.
+         *
+         * @param nick nick gracza
+         */
         private void handleUnready(String nick) {
             if (!nick.equals(nickname)) {
                 out.println("ERROR Invalid nickname");
@@ -654,6 +932,11 @@ public class UnoServer extends Thread {
             broadcastToRoom(currentRoomId, "UNREADY " + nick);
         }
 
+        /**
+         * Obsługuje polecenie wyjścia z gry.
+         *
+         * @param nick nick gracza
+         */
         private void handleExit(String nick) {
             if (!nick.equals(nickname)) {
                 out.println("ERROR Invalid nickname");
@@ -677,6 +960,9 @@ public class UnoServer extends Thread {
             clientStatus.remove(nick);
         }
 
+        /**
+         * Inicjalizuje grę i wysyła stan początkowej gry do wszystkich graczy w pokoju.
+         */
         private void initialize_game() {
             if (currentRoomId == -1) {
                 out.println("ERROR Not in a room");
@@ -726,6 +1012,11 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Obsługuje próbę zagrania karty przez gracza.
+         *
+         * @param cardStr karta w formacie string
+         */
         private void handlePlay(String cardStr) {
             if (currentRoomId == -1) {
                 out.println("ERROR Not in a room");
@@ -818,6 +1109,9 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Obsługuje dobranie karty przez gracza.
+         */
         private void handleDraw() {
             if (currentRoomId == -1) {
                 out.println("ERROR Not in a room");
@@ -867,6 +1161,9 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Wysyła aktualny stan gry do klienta.
+         */
         private void sendGameState() {
             if (currentRoomId == -1) {
                 out.println("ERROR Not in a room");
@@ -911,6 +1208,9 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Wysyła zaktualizowane ręce wszystkich graczy w pokoju.
+         */
         private void updateAllPlayerHandsInRoom() {
             GameRoom room = gameRooms.get(currentRoomId);
             if (room == null || !room.isGameInProgress()) {
@@ -947,6 +1247,9 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Wysyła listę użytkowników w pokoju do klienta.
+         */
         private void broadcastUserList() {
             if (currentRoomId == -1) {
                 out.println("ERROR Not in a room");
@@ -955,6 +1258,11 @@ public class UnoServer extends Thread {
             broadcastUserListToRoom(currentRoomId);
         }
 
+        /**
+         * Wysyła listę użytkowników w pokoju do wszystkich graczy w tym pokoju.
+         *
+         * @param roomId identyfikator pokoju
+         */
         private void broadcastUserListToRoom(int roomId) {
             GameRoom room = gameRooms.get(roomId);
             if (room == null) return;
@@ -966,6 +1274,12 @@ public class UnoServer extends Thread {
             broadcastToRoom(roomId, userList.toString());
         }
 
+        /**
+         * Wysyła wiadomość do wszystkich graczy w pokoju.
+         *
+         * @param roomId identyfikator pokoju
+         * @param message wiadomość do wysłania
+         */
         private void broadcastToRoom(int roomId, String message) {
             GameRoom room = gameRooms.get(roomId);
             if (room == null) return;
@@ -978,6 +1292,10 @@ public class UnoServer extends Thread {
             }
         }
 
+        /**
+         * Czyści zasoby po rozłączeniu klienta.
+         * Usuwa gracza z pokoju, map i zamyka połączenie.
+         */
         private void cleanup() {
             if (nickname != null) {
                 // Usuń gracza z pokoju
