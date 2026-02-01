@@ -154,13 +154,47 @@ public class UnoServer extends Thread {
         }
 
         public boolean playCard(String player, Cart card) {
+            System.out.println("Game.playCard: gracz " + player + " próbuje zagrać " + card);
+
             if (!player.equals(players.get(currentPlayerIndex))) {
+                System.out.println("To nie jest tura gracza " + player);
                 return false;
             }
 
             Cart topCard = getTopCard();
             if (canPlayOn(card, topCard)) {
-                hands.get(player).remove(card);
+                // Znajdź i usuń konkretną kartę z ręki gracza
+                List<Cart> playerHand = hands.get(player);
+                boolean removed = false;
+
+                // Debug: wypisz zawartość ręki przed usunięciem
+                System.out.println("Ręka przed usunięciem (" + player + "):");
+                for (Cart c : playerHand) {
+                    System.out.println("  " + c.toString());
+                }
+
+                // Znajdź kartę do usunięcia (porównując stringi, bo mogą być różne obiekty)
+                for (int i = 0; i < playerHand.size(); i++) {
+                    Cart c = playerHand.get(i);
+                    if (c.toString().equals(card.toString())) {
+                        playerHand.remove(i);
+                        removed = true;
+                        System.out.println("Usunięto kartę: " + card.toString() + " z pozycji " + i);
+                        break;
+                    }
+                }
+
+                if (!removed) {
+                    System.out.println("UWAGA: Nie znaleziono karty do usunięcia!");
+                    return false;
+                }
+
+                // Debug: wypisz zawartość ręki po usunięciu
+                System.out.println("Ręka po usunięciu (" + player + "):");
+                for (Cart c : playerHand) {
+                    System.out.println("  " + c.toString());
+                }
+
                 discardPile.add(card);
                 currentColor = card.getKolor();
                 currentValue = card.getWartosc();
@@ -429,45 +463,67 @@ public class UnoServer extends Thread {
                 System.out.println("Próba zagrania karty: " + cardStr + " przez gracza: " + nickname);
                 Cart card = Cart.fromString(cardStr);
 
-                List<Cart> playerHand = currentGame.getHandForPlayer(nickname);
-                boolean hasCard = false;
-                for (Cart c : playerHand) {
-                    if (c.toString().equals(cardStr)) {
-                        hasCard = true;
-                        break;
-                    }
-                }
-
-                if (!hasCard) {
-                    out.println("ERROR Nie masz tej karty");
-                    out.println("TURN " + currentGame.getCurrentPlayer()); // Odblokuj turę
-                    return;
-                }
+                // ... (sprawdzanie i logika gry)
 
                 boolean success = currentGame.playCard(nickname, card);
 
                 if (success) {
                     System.out.println("Karta zagrana pomyślnie przez: " + nickname);
-                    String broadcast = "PLAYED " + nickname + " " + cardStr + ";";
+
                     Cart topCard = currentGame.getTopCard();
-                    if (topCard != null) {
-                        broadcast += "TOP_CARD " + topCard.toString() + ";";
+                    String currentPlayer = currentGame.getCurrentPlayer();
+
+                    // Budujemy wiadomość dla KAŻDEGO gracza INDYWIDUALNIE
+                    for (String player : currentGame.getPlayers()) {
+                        ClientHandler client = connectedClients.get(player);
+                        if (client != null) {
+                            // Lista przeciwników z liczbą kart
+                            StringBuilder opponentsStr = new StringBuilder();
+                            List<String> playersList = currentGame.getPlayers();
+                            for (String p : playersList) {
+                                if (!p.equals(player)) {
+                                    int handSize = currentGame.getHandForPlayer(p).size();
+                                    opponentsStr.append(p).append(":").append(handSize);
+                                    if (!p.equals(playersList.get(playersList.size() - 1))) {
+                                        opponentsStr.append(",");
+                                    }
+                                }
+                            }
+
+                            // Ręka BIEŻĄCEGO gracza (dla którego budujemy wiadomość)
+                            List<Cart> hand = currentGame.getHandForPlayer(player);
+                            StringBuilder handStr = new StringBuilder();
+                            for (int i = 0; i < hand.size(); i++) {
+                                handStr.append(hand.get(i).toString());
+                                if (i < hand.size() - 1) handStr.append(",");
+                            }
+
+                            // Komunikat PLAY_RESULT z pełnym stanem
+                            String message = String.format("PLAY_RESULT %s %s %s %s %s %s",
+                                    nickname,                    // kto zagrał
+                                    cardStr,                     // jaka karta
+                                    topCard != null ? topCard.toString() : "",
+                                    currentPlayer,
+                                    opponentsStr.toString(),
+                                    handStr.toString());        // RĘKA BIEŻĄCEGO GRACZA
+
+                            System.out.println("Wysyłam do gracza " + player + ": " + message);
+                            client.out.println(message);
+                        }
                     }
+
+                    // Sprawdź czy ktoś wygrał
                     if (currentGame.hasPlayerWon(nickname)) {
-                        broadcast += "WINNER " + nickname + ";";
-                        broadcastMessage(broadcast);
                         db.increaseWins(conn, nickname);
                         endGame();
                         return;
                     }
+
+                    // Jeśli trzeba wybrać kolor dla WILD
                     if (currentGame.isWaitingForWildColor() && nickname.equals(currentGame.getCurrentPlayer())) {
                         out.println("CHOOSE_COLOR");
-                        broadcastMessage(broadcast);
-                    } else {
-                        broadcast += "TURN " + currentGame.getCurrentPlayer() + ";";
-                        broadcastMessage(broadcast);
-                        updateAllPlayerHands();
                     }
+
                 } else {
                     out.println("ERROR Nie można zagrać tej karty");
                     out.println("TURN " + currentGame.getCurrentPlayer());
@@ -494,6 +550,7 @@ public class UnoServer extends Thread {
             if (drawnCard != null) {
                 out.println("DREW " + drawnCard.toString());
 
+                // Wyślij zaktualizowaną rękę do gracza, który dobrał kartę
                 List<Cart> hand = currentGame.getHandForPlayer(nickname);
                 StringBuilder handStr = new StringBuilder("HAND ");
                 for (int i = 0; i < hand.size(); i++) {
@@ -502,8 +559,13 @@ public class UnoServer extends Thread {
                 }
                 out.println(handStr.toString());
 
+                // Przejdź do następnego gracza
                 currentGame.nextPlayer();
+
+                // Powiadom wszystkich graczy o zmianie tury
                 broadcastMessage("TURN " + currentGame.getCurrentPlayer());
+
+                // Wyślij zaktualizowane informacje o rękach wszystkich graczy
                 updateAllPlayerHands();
             } else {
                 out.println("ERROR No cards to draw");
