@@ -8,19 +8,37 @@
 
 <AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.LoginController">
     <children>
-        <Text fill="#2eff00" layoutX="555.0" layoutY="308.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Podaj nick" />
-        <TextField fx:id="loginTextField" layoutX="600.0" layoutY="333.0" prefWidth="300" />
+        <!-- Główny tytuł -->
+        <Text fill="#2eff00" layoutX="700.0" layoutY="150.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Logowanie do UNO">
+            <font>
+                <Font size="48.0" />
+            </font>
+        </Text>
 
-        <!-- DODANE: Pole hasła -->
-        <Text fill="#2eff00" layoutX="550.0" layoutY="508.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Podaj hasło" />
-        <PasswordField fx:id="passwordField" layoutX="600.0" layoutY="533.0" prefWidth="300" />
+        <!-- Panel logowania -->
+        <Rectangle arcHeight="20.0" arcWidth="20.0" fill="#000000" height="400.0" layoutX="600.0" layoutY="200.0" stroke="#2eff00" strokeType="INSIDE" strokeWidth="2.0" width="720.0" />
 
-        <!-- DODANE: Etykieta błędu -->
-        <Label fx:id="errorLabel" layoutX="700.0" layoutY="500.0" textFill="red" visible="false" prefWidth="300" />
+        <!-- Pola logowania -->
+        <Text fill="#2eff00" layoutX="650.0" layoutY="280.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Nazwa użytkownika:" style="-fx-font-size: 20px;" />
+        <TextField fx:id="loginTextField" layoutX="650.0" layoutY="300.0" prefWidth="620.0" prefHeight="40.0" style="-fx-font-size: 18px;" />
 
-        <Button layoutX="880.0" layoutY="650.0" mnemonicParsing="false" onAction="#handlePlayButton" text="Graj" />
-        <Button layoutX="550.0" layoutY="650.0" mnemonicParsing="false" onAction="#switch_to_main_menu" text="Powrót" />
+        <Text fill="#2eff00" layoutX="650.0" layoutY="380.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Hasło:" style="-fx-font-size: 20px;" />
+        <PasswordField fx:id="passwordField" layoutX="650.0" layoutY="400.0" prefWidth="620.0" prefHeight="40.0" style="-fx-font-size: 18px;" />
 
+        <!-- Etykieta błędu -->
+        <Label fx:id="errorLabel" layoutX="650.0" layoutY="460.0" textFill="red" visible="false" prefWidth="620.0" wrapText="true" style="-fx-font-size: 16px;" />
+
+        <!-- Przyciski -->
+        <Button layoutX="650.0" layoutY="520.0" mnemonicParsing="false" onAction="#handlePlayButton" prefWidth="300.0" prefHeight="60.0" text="Zaloguj i dołącz do gry" style="-fx-background-color: #000000; -fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;" />
+        <Button layoutX="970.0" layoutY="520.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefWidth="300.0" prefHeight="60.0" text="Powrót do menu" style="-fx-background-color: #000000; -fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;" />
+
+        <!-- Informacja o systemie pokoi -->
+        <Text fill="#2eff00" layoutX="650.0" layoutY="620.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Po zalogowaniu zostaniesz przeniesiony do listy pokoi, gdzie możesz:" style="-fx-font-size: 16px;" />
+        <Text fill="#2eff00" layoutX="670.0" layoutY="650.0" strokeType="OUTSIDE" strokeWidth="0.0" text="• Utworzyć własny pokój (2-4 graczy)" style="-fx-font-size: 16px;" />
+        <Text fill="#2eff00" layoutX="670.0" layoutY="680.0" strokeType="OUTSIDE" strokeWidth="0.0" text="• Dołączyć do istniejącego pokoju" style="-fx-font-size: 16px;" />
+        <Text fill="#2eff00" layoutX="670.0" layoutY="710.0" strokeType="OUTSIDE" strokeWidth="0.0" text="• Grać w trybie publicznym lub prywatnym" style="-fx-font-size: 16px;" />
+
+        <!-- Elementy dekoracyjne - animacja ziemi -->
         <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="1600.0" layoutY="30.0" pickOnBounds="true" preserveRatio="true">
             <image>
                 <Image url="@assets/textures/earth_spinning.gif" />
@@ -44,5 +62,8 @@
                 <Font size="20.0" />
             </font>
         </Text>
+
+        <!-- Informacja o statusie połączenia -->
+        <Label fx:id="connectionStatus" layoutX="1600.0" layoutY="320.0" textFill="#2eff00" text="Status: Niepołączono" style="-fx-font-size: 16px;" />
     </children>
 </AnchorPane>
