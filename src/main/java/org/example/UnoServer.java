@@ -79,11 +79,11 @@ public class UnoServer extends Thread {
             currentColor = firstCard.getKolor();
             currentValue = firstCard.getWartosc();
 
-            while (firstCard.getWartosc().equals("WILD") ||
-                    firstCard.getWartosc().equals("WILD_DRAW4") ||
-                    firstCard.getWartosc().equals("DRAW_TWO") ||
-                    firstCard.getWartosc().equals("SKIP") ||
-                    firstCard.getWartosc().equals("REVERSE")) {
+            while (firstCard.getWartosc().equals("W") ||
+                    firstCard.getWartosc().equals("W4") ||
+                    firstCard.getWartosc().equals("+2") ||
+                    firstCard.getWartosc().equals("⏸") ||
+                    firstCard.getWartosc().equals("↺")) {
                 deck.add(discardPile.remove(0));
                 shuffleDeck();
                 firstCard = drawFromDeck();
@@ -97,7 +97,9 @@ public class UnoServer extends Thread {
 
         private void initDeck() {
             String[] colors = {"RED", "GREEN", "BLUE", "YELLOW"};
-            String[] values = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "DRAW_TWO", "SKIP", "REVERSE"};
+            // Zmieniamy wartości na skrócone
+            String[] values = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                    "+2", "⏸", "↺"};
 
             for (String color : colors) {
                 deck.add(new Cart(color, "0"));
@@ -109,9 +111,10 @@ public class UnoServer extends Thread {
                 }
             }
 
+
             for (int i = 0; i < 4; i++) {
-                deck.add(new Cart("WILD", "WILD"));
-                deck.add(new Cart("WILD", "WILD_DRAW4"));
+                deck.add(new Cart("WILD", "W"));
+                deck.add(new Cart("WILD", "W4"));
             }
         }
 
@@ -220,15 +223,15 @@ public class UnoServer extends Thread {
         private void handleSpecialCard(Cart card) {
             String value = card.getWartosc();
             switch (value) {
-                case "SKIP":
+                case "⏸":
                     nextPlayer();
                     break;
-                case "REVERSE":
+                case "↺":
                     direction = !direction;
                     Collections.reverse(players);
                     currentPlayerIndex = players.indexOf(getCurrentPlayer());
                     break;
-                case "DRAW_TWO":
+                case "+2":
                     nextPlayer();
                     String nextPlayer = getCurrentPlayer();
                     for (int i = 0; i < 2; i++) {
@@ -239,7 +242,7 @@ public class UnoServer extends Thread {
                     }
                     nextPlayer();
                     break;
-                case "WILD_DRAW4":
+                case "W4":
                     nextPlayer();
                     String nextPlayerWild = getCurrentPlayer();
                     for (int i = 0; i < 4; i++) {
@@ -251,7 +254,7 @@ public class UnoServer extends Thread {
                     nextPlayer();
                     waitingForWildColor = true;
                     break;
-                case "WILD":
+                case "W":
                     waitingForWildColor = true;
                     break;
             }

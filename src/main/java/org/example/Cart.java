@@ -30,7 +30,7 @@ public class Cart {
     public static Cart generate_random_cart() {
         String[] colors = {"RED", "GREEN", "BLUE", "YELLOW", "WILD"};
         String[] weights = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-                "DRAW_TWO", "SKIP", "REVERSE", "WILD", "WILD_DRAW4"};
+                "+2", "⏸", "↺", "W", "W4"};
 
         int colorIndex = (int)(Math.random() * colors.length);
         int weightIndex = (int)(Math.random() * weights.length);
