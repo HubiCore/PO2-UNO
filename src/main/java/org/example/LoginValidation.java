@@ -2,23 +2,44 @@ package org.example;
 
 import java.util.regex.Pattern;
 
+/**
+ * Klasa udostępniająca metody walidacji tekstu przy użyciu wyrażeń regularnych.
+ * Obsługuje różne typy walidacji zdefiniowane w enum {@link ValidationType}.
+ * Zawiera metody do walidacji z różnymi parametrami oraz zwracania szczegółowych wyników.
+ */
 public class LoginValidation {
 
+    /**
+     * Enum definiujący typy walidacji dostępne w klasie.
+     */
     public enum ValidationType {
+        /** Tylko litery (w tym polskie znaki) i spacje */
         ONLY_TEXT,
 
+        /** Tylko cyfry */
         ONLY_NUMBERS,
 
+        /** Tylko litery i cyfry (bez polskich znaków) */
         ALPHANUMERIC,
 
+        /** Litery (w tym polskie znaki), cyfry i spacje - bez znaków specjalnych */
         NO_SPECIAL_CHARS,
 
+        /** Nazwa użytkownika: litery, cyfry, podkreślenia (3-20 znaków) */
         USERNAME,
 
+        /** Typ niestandardowy - wymaga podania własnego wyrażenia regularnego */
         CUSTOM
-
     }
 
+    /**
+     * Sprawdza, czy podany tekst spełnia kryteria wybranego typu walidacji.
+     * Tekst jest przycinany (trim) przed walidacją.
+     *
+     * @param type typ walidacji do zastosowania
+     * @param text tekst do walidacji
+     * @return true jeśli tekst jest niepusty i pasuje do wzorca, false w przeciwnym razie
+     */
     public static boolean isValid(ValidationType type, String text) {
         if (text == null || text.trim().isEmpty()) {
             return false;
@@ -28,6 +49,20 @@ public class LoginValidation {
         return Pattern.matches(regex, text.trim());
     }
 
+    /**
+     * Sprawdza, czy podany tekst spełnia kryteria wybranego typu walidacji
+     * oraz mieści się w określonym zakresie długości.
+     * Tekst jest przycinany (trim) przed walidacją.
+     *
+     * @param type typ walidacji do zastosowania
+     * @param text tekst do walidacji
+     * @param minLength minimalna dopuszczalna długość tekstu (po przycięciu);
+     *                  wartość ≤ 0 oznacza brak ograniczenia minimalnego
+     * @param maxLength maksymalna dopuszczalna długość tekstu (po przycięciu);
+     *                  wartość ≤ 0 oznacza brak ograniczenia maksymalnego
+     * @return true jeśli tekst jest niepusty, pasuje do wzorca i mieści się w zakresie długości,
+     *         false w przeciwnym razie
+     */
     public static boolean isValid(ValidationType type, String text, int minLength, int maxLength) {
         if (text == null) return false;
 
@@ -40,11 +75,26 @@ public class LoginValidation {
         return Pattern.matches(regex, trimmed);
     }
 
+    /**
+     * Sprawdza, czy podany tekst pasuje do niestandardowego wyrażenia regularnego.
+     * Tekst jest przycinany (trim) przed walidacją.
+     *
+     * @param customRegex niestandardowe wyrażenie regularne do walidacji
+     * @param text tekst do walidacji
+     * @return true jeśli tekst pasuje do podanego wyrażenia regularnego, false w przeciwnym razie
+     * @throws NullPointerException jeśli customRegex lub text są null
+     */
     public static boolean isValidWithCustomRegex(String customRegex, String text) {
         if (text == null || customRegex == null) return false;
         return Pattern.matches(customRegex, text.trim());
     }
 
+    /**
+     * Zwraca wyrażenie regularne odpowiadające podanemu typowi walidacji.
+     *
+     * @param type typ walidacji
+     * @return wyrażenie regularne dla danego typu
+     */
     private static String getRegexForType(ValidationType type) {
         return switch (type) {
             case ONLY_TEXT -> "^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\\s]+$";
@@ -53,10 +103,17 @@ public class LoginValidation {
             case NO_SPECIAL_CHARS -> "^[a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ\\s]+$";
             case USERNAME -> "^[a-zA-Z0-9_]{3,20}$";
             default -> ".*";
-
         };
     }
 
+    /**
+     * Wykonuje walidację tekstu dla podanego typu i zwraca szczegółowy wynik
+     * zawierający status oraz wiadomość w przypadku niepowodzenia.
+     *
+     * @param type typ walidacji do zastosowania
+     * @param text tekst do walidacji
+     * @return obiekt {@link ValidationResult} zawierający wynik walidacji i ewentualny komunikat błędu
+     */
     public static ValidationResult validateWithMessage(ValidationType type, String text) {
         ValidationResult result = new ValidationResult();
 
@@ -79,6 +136,12 @@ public class LoginValidation {
         return result;
     }
 
+    /**
+     * Zwraca komunikat błędu odpowiedni dla danego typu walidacji.
+     *
+     * @param type typ walidacji
+     * @return tekstowy opis błędu walidacji
+     */
     private static String getErrorMessage(ValidationType type) {
         return switch (type) {
             case ONLY_TEXT -> "Dozwolone są tylko litery (w tym polskie znaki)";
@@ -90,14 +153,40 @@ public class LoginValidation {
         };
     }
 
+    /**
+     * Klasa reprezentująca wynik walidacji.
+     * Zawiera flagę określającą poprawność oraz opcjonalny komunikat błędu.
+     */
     public static class ValidationResult {
         private boolean valid;
         private String message;
 
+        /**
+         * Zwraca status walidacji.
+         *
+         * @return true jeśli walidacja zakończyła się sukcesem, false w przeciwnym razie
+         */
         public boolean isValid() { return valid; }
+
+        /**
+         * Ustawia status walidacji.
+         *
+         * @param valid nowa wartość statusu walidacji
+         */
         public void setValid(boolean valid) { this.valid = valid; }
 
+        /**
+         * Zwraca komunikat błędu walidacji (jeśli wystąpił).
+         *
+         * @return komunikat błędu lub null, jeśli walidacja przebiegła pomyślnie
+         */
         public String getMessage() { return message; }
+
+        /**
+         * Ustawia komunikat błędu walidacji.
+         *
+         * @param message nowy komunikat błędu
+         */
         public void setMessage(String message) { this.message = message; }
     }
 }

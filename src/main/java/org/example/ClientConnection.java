@@ -3,6 +3,13 @@ package org.example;
 import java.io.*;
 import java.net.*;
 
+/**
+ * Klasa zarządzająca połączeniem klienta z serwerem TCP.
+ * Implementuje interfejs AutoCloseable, co umożliwia użycie w try-with-resources.
+ * Zapewnia metody do nawiązywania połączenia, wysyłania i odbierania wiadomości,
+ * zarządzania timeoutami oraz zarządzania stanem połączenia.
+ *
+ */
 public class ClientConnection implements AutoCloseable {
     private Socket socket;
     private BufferedReader reader;
@@ -12,19 +19,31 @@ public class ClientConnection implements AutoCloseable {
     private int port = 2137;
     private boolean debug = true; // Włącz/Wyłącz logowanie debug
 
-    // Podstawowy konstruktor
+    /**
+     * Podstawowy konstruktor tworzący połączenie z domyślnymi ustawieniami
+     * (localhost:2137).
+     */
     public ClientConnection() {
     }
 
-    // Konstruktor z możliwością ustawienia hosta i portu
+    /**
+     * Konstruktor umożliwiający ustawienie niestandardowego hosta i portu.
+     *
+     * @param host Adres serwera (np. "localhost", "192.168.1.1")
+     * @param port Port serwera (np. 8080)
+     */
     public ClientConnection(String host, int port) {
         this.host = host;
         this.port = port;
     }
 
     /**
-     * Nawiązuje połączenie z serwerem
-     * @return true jeśli połączenie zostało nawiązane, false w przeciwnym razie
+     * Nawiązuje połączenie z serwerem.
+     * W przypadku już istniejącego połączenia, najpierw je zamyka.
+     * Ustawia timeout połączenia na 5 sekund i timeout odczytu na 10 sekund.
+     *
+     * @return true jeśli połączenie zostało nawiązane pomyślnie,
+     *         false w przypadku jakiegokolwiek błędu
      */
     public boolean connect() {
         try {
@@ -58,9 +77,11 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Wysyła wiadomość do serwera
+     * Wysyła wiadomość tekstową do serwera.
+     *
      * @param message Wiadomość do wysłania
-     * @return true jeśli wysłano pomyślnie, false w przeciwnym razie
+     * @return true jeśli wiadomość została wysłana pomyślnie,
+     *         false w przypadku braku połączenia lub błędu wysyłania
      */
     public boolean sendMessage(String message) {
         if (!connected) {
@@ -86,8 +107,10 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Odbiera jedną wiadomość od serwera (blokująco)
-     * @return Odebrana wiadomość lub null w przypadku błędu/timeoutu
+     * Odbiera jedną wiadomość od serwera w sposób blokujący.
+     * Czeka na dane przez czas określony przez socket timeout (domyślnie 10 sekund).
+     *
+     * @return Odebrana wiadomość jako String, lub null w przypadku błędu lub timeoutu
      */
     public String receiveMessage() {
         if (!connected) {
@@ -117,9 +140,11 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Odbiera wiadomość z określonym timeoutem
+     * Odbiera wiadomość od serwera z określonym timeoutem.
+     * Tymczasowo zmienia timeout socketa na podaną wartość.
+     *
      * @param timeoutMs Timeout w milisekundach
-     * @return Odebrana wiadomość lub null
+     * @return Odebrana wiadomość jako String, lub null w przypadku błędu lub timeoutu
      */
     public String receiveMessageWithTimeout(int timeoutMs) {
         if (!connected || socket == null) {
@@ -142,9 +167,11 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Wysyła wiadomość i czeka na odpowiedź
+     * Wysyła wiadomość do serwera i czeka na odpowiedź.
+     * Używa domyślnego timeoutu socketa (10 sekund).
+     *
      * @param message Wiadomość do wysłania
-     * @return Odpowiedź serwera lub null
+     * @return Odpowiedź serwera jako String, lub null w przypadku błędu
      */
     public String sendAndReceive(String message) {
         log("Wysyłam i oczekuję odpowiedzi...");
@@ -155,10 +182,11 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Wysyła wiadomość i czeka na odpowiedź z timeoutem
+     * Wysyła wiadomość do serwera i czeka na odpowiedź z określonym timeoutem.
+     *
      * @param message Wiadomość do wysłania
-     * @param timeoutMs Timeout w milisekundach
-     * @return Odpowiedź serwera lub null
+     * @param timeoutMs Maksymalny czas oczekiwania na odpowiedź (w milisekundach)
+     * @return Odpowiedź serwera jako String, lub null w przypadku błędu lub timeoutu
      */
     public String sendAndReceiveWithTimeout(String message, int timeoutMs) {
         log("Wysyłam i oczekuję odpowiedzi z timeoutem " + timeoutMs + "ms...");
@@ -169,11 +197,13 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Wysyła wiadomość i czeka na odpowiedź o określonym prefiksie
+     * Wysyła wiadomość i czeka na odpowiedź o określonym prefiksie w podanym czasie.
+     * Pomija wiadomości, które nie zaczynają się od oczekiwanego prefiksu.
+     *
      * @param message Wiadomość do wysłania
-     * @param expectedPrefix Prefix oczekiwanej odpowiedzi (np. "LOGIN_")
-     * @param timeoutMs Timeout w milisekundach
-     * @return Odpowiedź serwera lub null
+     * @param expectedPrefix Prefix, od którego powinna zaczynać się oczekiwana odpowiedź
+     * @param timeoutMs Maksymalny czas oczekiwania (w milisekundach)
+     * @return Odpowiedź serwera zaczynająca się od expectedPrefix, lub null jeśli nie znaleziono
      */
     public String sendAndWaitForResponse(String message, String expectedPrefix, int timeoutMs) {
         if (!sendMessage(message)) {
@@ -207,7 +237,8 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Czyści bufor wejściowy (odczytuje wszystkie dostępne wiadomości)
+     * Czyści bufor wejściowy poprzez odczytanie wszystkich dostępnych wiadomości.
+     * Przydatne do usuwania zaległych wiadomości przed rozpoczęciem nowej sekwencji komunikacji.
      */
     public void clearInputBuffer() {
         if (!connected || reader == null) {
@@ -243,8 +274,10 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Sprawdza czy połączenie jest aktywne
-     * @return true jeśli połączony, false w przeciwnym razie
+     * Sprawdza, czy połączenie z serwerem jest aktywne.
+     * Weryfikuje flagę connected oraz stan socketa.
+     *
+     * @return true jeśli połączenie jest aktywne, false w przeciwnym razie
      */
     public boolean isConnected() {
         boolean isConnected = connected && socket != null && !socket.isClosed() && socket.isConnected();
@@ -253,7 +286,9 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Zamyka połączenie z serwerem
+     * Zamyka połączenie z serwerem.
+     * Zamyka wszystkie zasoby: writer, reader i socket.
+     * Ustawia flagę connected na false.
      */
     public void disconnect() {
         log("Rozłączam...");
@@ -280,7 +315,9 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Implementacja AutoCloseable - do używania w try-with-resources
+     * Implementacja metody z interfejsu AutoCloseable.
+     * Umożliwia użycie klasy w try-with-resources.
+     * Wywołuje metodę disconnect().
      */
     @Override
     public void close() {
@@ -288,15 +325,19 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Ustawia hosta serwera
-     * @param host Adres serwera
+     * Ustawia adres hosta serwera.
+     * Zmiana hosta nie wpływa na istniejące połączenie.
+     *
+     * @param host Adres serwera (np. "localhost", "192.168.1.1")
      */
     public void setHost(String host) {
         this.host = host;
     }
 
     /**
-     * Ustawia port serwera
+     * Ustawia port serwera.
+     * Zmiana portu nie wpływa na istniejące połączenie.
+     *
      * @param port Port serwera
      */
     public void setPort(int port) {
@@ -304,7 +345,9 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Ustawia host i port jednocześnie
+     * Ustawia zarówno host jak i port serwera jednocześnie.
+     * Zmiana parametrów nie wpływa na istniejące połączenie.
+     *
      * @param host Adres serwera
      * @param port Port serwera
      */
@@ -314,15 +357,18 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Włącza lub wyłącza logowanie debug
-     * @param debug true aby włączyć, false aby wyłączyć
+     * Włącza lub wyłącza tryb debugowania.
+     * W trybie debugowania wyświetlane są dodatkowe informacje w konsoli.
+     *
+     * @param debug true aby włączyć logowanie debug, false aby wyłączyć
      */
     public void setDebug(boolean debug) {
         this.debug = debug;
     }
 
     /**
-     * Pobiera aktualny host
+     * Zwraca aktualnie ustawiony adres hosta.
+     *
      * @return Adres serwera
      */
     public String getHost() {
@@ -330,7 +376,8 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Pobiera aktualny port
+     * Zwraca aktualnie ustawiony port.
+     *
      * @return Port serwera
      */
     public int getPort() {
@@ -338,7 +385,8 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Sprawdza czy debug jest włączony
+     * Sprawdza, czy tryb debugowania jest włączony.
+     *
      * @return true jeśli debug włączony, false w przeciwnym razie
      */
     public boolean isDebug() {
@@ -346,7 +394,9 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Pomocnicza metoda do logowania
+     * Pomocnicza metoda do logowania informacji debugowych.
+     * Wiadomości są wyświetlane tylko gdy debug = true.
+     *
      * @param message Wiadomość do zalogowania
      */
     private void log(String message) {
@@ -356,7 +406,9 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Pomocnicza metoda do logowania błędów
+     * Pomocnicza metoda do logowania błędów.
+     * Wiadomości błędów są zawsze wyświetlane (nawet gdy debug = false).
+     *
      * @param message Wiadomość o błędzie
      */
     private void logError(String message) {
@@ -364,8 +416,10 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Testuje połączenie z serwerem pingiem
-     * @return true jeśli serwer odpowiada, false w przeciwnym razie
+     * Testuje połączenie z serwerem wysyłając komendę "PING".
+     * Oczekuje odpowiedzi "PONG" w ciągu 3 sekund.
+     *
+     * @return true jeśli serwer odpowiada prawidłowo, false w przeciwnym razie
      */
     public boolean testConnection() {
         if (!isConnected()) {
@@ -381,8 +435,10 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Pobiera zdalny adres serwera
-     * @return Adres serwera lub null
+     * Zwraca zdalny adres serwera, z którym jest nawiązane połączenie.
+     * Format: "adres_ip:port"
+     *
+     * @return Zdalny adres serwera jako String, lub null jeśli brak połączenia
      */
     public String getRemoteAddress() {
         if (socket != null && socket.isConnected()) {
@@ -392,8 +448,10 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Pobiera lokalny adres klienta
-     * @return Adres klienta lub null
+     * Zwraca lokalny adres klienta.
+     * Format: "adres_ip:port"
+     *
+     * @return Lokalny adres klienta jako String, lub null jeśli brak połączenia
      */
     public String getLocalAddress() {
         if (socket != null) {

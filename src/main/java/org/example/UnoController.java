@@ -1,3 +1,15 @@
+/**
+ * Główny kontroler gry UNO obsługujący interfejs użytkownika i komunikację z serwerem.
+ * Klasa zarządza logiką klienta gry UNO, w tym wyświetlaniem kart, obsługą tur graczy,
+ * przetwarzaniem komunikatów serwera i interakcją użytkownika poprzez interfejs JavaFX.
+ *
+ * <p>Kontroler implementuje interfejs {@link Initializable}, co umożliwia inicjalizację
+ * komponentów JavaFX po załadowaniu pliku FXML.</p>
+ *
+ * @see javafx.fxml.Initializable
+ * @see ClientConnection
+ * @see Card
+ */
 package org.example;
 
 import javafx.application.Platform;
@@ -16,32 +28,88 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+
 public class UnoController implements Initializable {
+
+    /** Kontener dla wierzchniej karty na stole. */
     @FXML private StackPane stol;
+
+    /** Kontener wyświetlający karty w ręce głównego gracza. */
     @FXML private HBox rekaGracza;
+
+    /** Kontener wyświetlający karty przeciwnika (górny gracz). */
     @FXML private HBox rekaPrzeciwnika;
+
+    /** Kontener wyświetlający karty lewego przeciwnika. */
     @FXML private HBox rekaLewego;
+
+    /** Kontener wyświetlający karty prawego przeciwnika. */
     @FXML private HBox rekaPrawego;
+
+    /** Etykieta wyświetlająca instrukcje dla gracza. */
     @FXML private Label instrukcja;
+
+    /** Etykieta z nazwą i liczbą kart głównego gracza. */
     @FXML private Label labelGracz;
+
+    /** Etykieta z nazwą i liczbą kart przeciwnika (górny gracz). */
     @FXML private Label labelPrzeciwnik;
+
+    /** Etykieta z nazwą i liczbą kart lewego przeciwnika. */
     @FXML private Label labelLewy;
+
+    /** Etykieta z nazwą i liczbą kart prawego przeciwnika. */
     @FXML private Label labelPrawy;
+
+    /** Etykieta informująca o aktualnej turze. */
     @FXML private Label labelTura;
+
+    /** Przycisk umożliwiający dobieranie karty. */
     @FXML private Button przyciskDobierania;
+
+    /** Aktualna wierzchnia karta na stole. */
     private Card wierzchniaKarta;
+
+    /** Lista kart w ręce głównego gracza. */
     private List<Card> kartyGracza;
+
+    /** Mapa przechowująca liczbę kart każdego przeciwnika (klucz: nazwa gracza, wartość: liczba kart). */
     private Map<String, Integer> przeciwnicyKarty;
+
+    /** Połączenie klienta z serwerem. */
     private ClientConnection clientConnection;
+
+    /** Nickname głównego gracza. */
     private String nickname;
+
+    /** Nazwa gracza aktualnie wykonującego turę. */
     private String currentPlayer;
+
+    /** Flaga wskazująca, czy tura należy do głównego gracza. */
     private boolean myTurn = false;
+
+    /** Flaga wskazująca, czy oczekiwany jest wybór koloru po zagraniu karty WILD. */
     private boolean waitingForColorChoice = false;
+
+    /** AtomicBoolean zarządzający stanem aktywności gry. */
     private AtomicBoolean gameActive = new AtomicBoolean(true);
+
+    /** Wątek odbierający wiadomości z serwera. */
     private Thread messageReceiver;
+
+    /** Flaga wskazująca, czy interfejs użytkownika jest gotowy do aktualizacji. */
     private volatile boolean uiReady = false;
+
+    /** Kolejka wiadomości oczekujących na przetworzenie po gotowości UI. */
     private Queue<String> pendingMessages = new ConcurrentLinkedQueue<>();
 
+    /**
+     * Inicjalizuje kontroler po załadowaniu pliku FXML.
+     * Metoda wywoływana automatycznie przez JavaFX.
+     *
+     * @param location lokalizacja używana do rozwiązywania ścieżek względnych dla obiektu root
+     * @param resources zasoby używane do lokalizacji obiektu root
+     */
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         przeciwnicyKarty = new HashMap<>();
@@ -61,6 +129,12 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Konfiguruje połączenie z serwerem i ustawia nickname gracza.
+     *
+     * @param connection obiekt ClientConnection do komunikacji z serwerem
+     * @param nickname nazwa gracza
+     */
     public void setupConnection(ClientConnection connection, String nickname) {
         this.clientConnection = connection;
         this.nickname = nickname;
@@ -73,6 +147,10 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Uruchamia wątek odbierający wiadomości z serwera.
+     * Wiadomości są dodawane do kolejki pendingMessages i przetwarzane po gotowości UI.
+     */
     private void startMessageReceiver() {
         messageReceiver = new Thread(() -> {
             try {
@@ -118,6 +196,12 @@ public class UnoController implements Initializable {
         messageReceiver.setDaemon(true);
         messageReceiver.start();
     }
+
+    /**
+     * Usuwa kartę z ręki gracza na podstawie jej reprezentacji tekstowej.
+     *
+     * @param cardStr reprezentacja tekstowa karty do usunięcia
+     */
     private void removeCardFromHand(String cardStr) {
         Platform.runLater(() -> {
             for (int i = 0; i < kartyGracza.size(); i++) {
@@ -133,6 +217,10 @@ public class UnoController implements Initializable {
             }
         });
     }
+
+    /**
+     * Przetwarza wiadomości oczekujące w kolejce po gotowości UI.
+     */
     private void processPendingMessages() {
         if (!uiReady) {
             System.out.println("UI niegotowe, pomijam przetwarzanie");
@@ -146,6 +234,12 @@ public class UnoController implements Initializable {
         }
     }
 
+    /**
+     * Główna metoda obsługi komunikatów serwera.
+     * Rozpoznaje typ komunikatu i wywołuje odpowiednią metodę obsługi.
+     *
+     * @param message pełny komunikat otrzymany z serwera
+     */
     private void handleServerMessage(String message) {
         System.out.println("=== ROZPOCZĘCIE handleServerMessage ===");
         System.out.println("Oryginalna wiadomość: [" + message + "]");
@@ -212,6 +306,14 @@ public class UnoController implements Initializable {
 
         System.out.println("=== ZAKOŃCZENIE handleServerMessage ===\n");
     }
+
+    /**
+     * Obsługuje wynik zagrania karty otrzymany z serwera.
+     * Aktualizuje wierzchnią kartę, turę, stan przeciwników i rękę gracza.
+     *
+     * @param playResultData dane wyniku zagrania w formacie:
+     *                      "gracz karta wierzchnia_karta aktualny_gracz przeciwnicy ręka"
+     */
     private void handlePlayResult(String playResultData) {
         System.out.println("Przetwarzanie PLAY_RESULT: " + playResultData);
 
@@ -250,6 +352,12 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Obsługuje inicjalizację gry na podstawie danych otrzymanych z serwera.
+     *
+     * @param initData dane inicjalizacyjne w formacie:
+     *                "wierzchnia_karta aktualny_gracz przeciwnicy ręka"
+     */
     private void handleGameInitialization(String initData) {
         System.out.println("Inicjalizacja gry: " + initData);
 
@@ -268,9 +376,14 @@ public class UnoController implements Initializable {
         updateTurn(currentPlayer);
         updateOpponents(opponents);
         updateHand(hand);
-
     }
 
+    /**
+     * Aktualizuje wyświetlanie kart w ręce głównego gracza.
+     *
+     * @param handStr ciąg znaków reprezentujący karty w ręce,
+     *               oddzielone przecinkami (np. "RED:5,BLUE:SKIP")
+     */
     private void updateHand(String handStr) {
         System.out.println("updateHand wywołane z: " + handStr);
 
@@ -319,6 +432,11 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Aktualizuje wierzchnią kartę na stole.
+     *
+     * @param cardStr reprezentacja karty w formacie "kolor:wartość"
+     */
     private void updateTopCard(String cardStr) {
         try {
             stol.getChildren().clear();
@@ -333,6 +451,12 @@ public class UnoController implements Initializable {
         }
     }
 
+    /**
+     * Aktualizuje informacje o przeciwnikach na podstawie danych z serwera.
+     *
+     * @param playersStr ciąg z informacjami o graczach w formacie:
+     *                  "gracz1:liczba_kart,gracz2:liczba_kart,..."
+     */
     private void updateOpponents(String playersStr) {
         przeciwnicyKarty.clear();
         String[] players = playersStr.split(",");
@@ -349,6 +473,10 @@ public class UnoController implements Initializable {
         updateOpponentDisplays();
     }
 
+    /**
+     * Aktualizuje wyświetlanie informacji o przeciwnikach w interfejsie.
+     * Rozmieszcza etykiety i karty przeciwników w odpowiednich kontenerach.
+     */
     private void updateOpponentDisplays() {
         Platform.runLater(() -> {
             List<String> opponents = new ArrayList<>(przeciwnicyKarty.keySet());
@@ -380,6 +508,13 @@ public class UnoController implements Initializable {
             }
         });
     }
+
+    /**
+     * Aktualizuje wyświetlanie kart przeciwnika (tylko rewersy kart).
+     *
+     * @param handBox kontener HBox dla kart przeciwnika
+     * @param cardCount liczba kart do wyświetlenia
+     */
     private void updateHandDisplay(HBox handBox, int cardCount) {
         handBox.getChildren().clear();
         for (int i = 0; i < cardCount; i++) {
@@ -387,6 +522,11 @@ public class UnoController implements Initializable {
             handBox.getChildren().add(dummyCard.getBackView());
         }
     }
+
+    /**
+     * Obsługuje akcję dobierania karty przez gracza.
+     * Wysyła żądanie do serwera i aktualizuje interfejs.
+     */
     @FXML
     private void dobierzKarte() {
         if (myTurn && !waitingForColorChoice && clientConnection != null && clientConnection.isConnected()) {
@@ -417,6 +557,13 @@ public class UnoController implements Initializable {
             );
         }
     }
+
+    /**
+     * Aktualizuje informację o aktualnej turze.
+     * Włącza/wyłącza interaktywność kart i przycisków w zależności od tego, czy to tura gracza.
+     *
+     * @param player nazwa gracza, który ma aktualną turę
+     */
     private void updateTurn(String player) {
         System.out.println("=== updateTurn ===");
         System.out.println("Nowy gracz: " + player);
@@ -478,6 +625,11 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Obsługuje informację o zagranej karcie przez innego gracza.
+     *
+     * @param playInfo informacja o zagranej karcie w formacie "gracz karta"
+     */
     private void handleCardPlayed(String playInfo) {
         System.out.println("Otrzymano PLAYED: " + playInfo);
 
@@ -488,8 +640,6 @@ public class UnoController implements Initializable {
         if (parts.length >= 2) {
             String player = parts[0];
             String cardStr = parts[1];
-
-
 
             // Aktualizuj komunikat
             Platform.runLater(() -> {
@@ -502,6 +652,12 @@ public class UnoController implements Initializable {
         }
     }
 
+    /**
+     * Obsługuje informację o dobranej karcie przez gracza.
+     * Dodaje nową kartę do ręki gracza.
+     *
+     * @param cardStr reprezentacja dobranej karty
+     */
     private void handleCardDrawn(String cardStr) {
         System.out.println("handleCardDrawn: Otrzymano DREW - " + cardStr);
 
@@ -532,6 +688,12 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Obsługuje informację o zwycięzcy gry.
+     * Wyświetla odpowiedni komunikat i po 3 sekundach wraca do menu głównego.
+     *
+     * @param winner nazwa zwycięzcy
+     */
     private void handleWinner(String winner) {
         Platform.runLater(() -> {
             // Wyświetl komunikat o zwycięzcy
@@ -607,6 +769,10 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Obsługuje zakończenie gry przez serwer.
+     * Wyświetla komunikat i wraca do menu głównego.
+     */
     private void gameEnded() {
         gameActive.set(false);
 
@@ -653,6 +819,9 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Wyświetla okno dialogowe z wyborem koloru po zagraniu karty WILD.
+     */
     private void promptColorChoice() {
         waitingForColorChoice = true;
         instrukcja.setText("Wybierz kolor: [R]ed, [G]reen, [B]lue, [Y]ellow");
@@ -686,10 +855,18 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Aktualizuje informację o wybranym kolorze po zagraniu karty WILD.
+     *
+     * @param color wybrany kolor
+     */
     private void updateWildColor(String color) {
         instrukcja.setText("Kolor zmieniony na: " + color);
     }
 
+    /**
+     * Obsługuje żądanie dobrania karty (alternatywna metoda dla przycisku).
+     */
     @FXML
     private void handleDrawCard() {
         if (myTurn && !waitingForColorChoice) {
@@ -697,17 +874,26 @@ public class UnoController implements Initializable {
         }
     }
 
+    /**
+     * Wysyła do serwera informację o zagraniu karty.
+     *
+     * @param card karta do zagrania
+     */
     private void playCard(Card card) {
         if (myTurn && !waitingForColorChoice) {
             String cardStr = card.getColor() + ":" + card.getValue();
             clientConnection.sendMessage("PLAY " + cardStr);
             System.out.println("Wysłano kartę do serwera: " + cardStr);
 
-
             instrukcja.setText("Wysyłanie karty...");
         }
     }
-    //Debugging
+
+    /**
+     * Wyświetla okno dialogowe z błędem.
+     *
+     * @param message komunikat błędu do wyświetlenia
+     */
     private void showError(String message) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -718,6 +904,9 @@ public class UnoController implements Initializable {
         });
     }
 
+    /**
+     * Blokuje wszystkie karty w ręce gracza (np. po zakończeniu gry).
+     */
     private void zablokujKarty() {
         for (var child : rekaGracza.getChildren()) {
             child.setDisable(true);
@@ -725,6 +914,10 @@ public class UnoController implements Initializable {
         }
     }
 
+    /**
+     * Obsługuje wyjście z gry.
+     * Wysyła komunikat o wyjściu do serwera i zamyka połączenie.
+     */
     @FXML
     private void handleQuit() {
         gameActive.set(false);
