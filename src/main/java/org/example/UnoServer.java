@@ -148,7 +148,6 @@ public class UnoServer extends Thread {
         private boolean direction; // true = clockwise
         private String currentColor;
         private String currentValue;
-        private boolean waitingForWildColor = false;
 
         public Game(List<String> players) {
             this.players = new ArrayList<>(players);
@@ -157,7 +156,6 @@ public class UnoServer extends Thread {
             this.discardPile = new ArrayList<>();
             this.currentPlayerIndex = 0;
             this.direction = true;
-            this.waitingForWildColor = false;
 
             initDeck();
             shuffleDeck();
@@ -168,9 +166,7 @@ public class UnoServer extends Thread {
             currentColor = firstCard.getKolor();
             currentValue = firstCard.getWartosc();
 
-            while (firstCard.getWartosc().equals("W") ||
-                    firstCard.getWartosc().equals("W4") ||
-                    firstCard.getWartosc().equals("+2") ||
+            while (firstCard.getWartosc().equals("+2") ||
                     firstCard.getWartosc().equals("⏸") ||
                     firstCard.getWartosc().equals("↺")) {
                 deck.add(discardPile.remove(0));
@@ -195,12 +191,6 @@ public class UnoServer extends Thread {
                         deck.add(new Cart(color, value));
                     }
                 }
-            }
-
-            // Dodaj karty Wild
-            for (int i = 0; i < 4; i++) {
-                deck.add(new Cart("WILD", "W"));
-                deck.add(new Cart("WILD", "W4"));
             }
         }
 
@@ -298,10 +288,6 @@ public class UnoServer extends Thread {
         }
 
         private boolean canPlayOn(Cart card, Cart topCard) {
-            if (card.getKolor().equals("WILD")) {
-                return true;
-            }
-
             return card.getKolor().equals(currentColor) ||
                     card.getWartosc().equals(currentValue);
         }
@@ -328,21 +314,6 @@ public class UnoServer extends Thread {
                     }
                     nextPlayer();
                     break;
-                case "W":
-                    waitingForWildColor = true;
-                    break;
-                case "W4":
-                    waitingForWildColor = true;
-                    nextPlayer();
-                    String nextPlayer2 = getCurrentPlayer();
-                    for (int i = 0; i < 4; i++) {
-                        Cart drawnCard = drawFromDeck();
-                        if (drawnCard != null) {
-                            hands.get(nextPlayer2).add(drawnCard);
-                        }
-                    }
-                    nextPlayer();
-                    break;
             }
         }
 
@@ -364,15 +335,6 @@ public class UnoServer extends Thread {
 
         public boolean hasPlayerWon(String player) {
             return hands.get(player).isEmpty();
-        }
-
-        public void setWildColor(String color) {
-            currentColor = color;
-            waitingForWildColor = false;
-        }
-
-        public boolean isWaitingForWildColor() {
-            return waitingForWildColor;
         }
 
         public List<String> getPlayers() {
@@ -480,12 +442,6 @@ public class UnoServer extends Thread {
                     return;
                 }
                 handleDraw();
-            } else if (inputLine.startsWith("WILD_COLOR ")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                handleWildColor(inputLine.substring(11));
             } else if ("GET_GAME_STATE".equals(inputLine)) {
                 if (nickname == null) {
                     out.println("ERROR_NOT_LOGGED_IN");
@@ -851,11 +807,6 @@ public class UnoServer extends Thread {
                         }
                     }
 
-                    // Jeśli trzeba wybrać kolor dla WILD
-                    if (currentGame.isWaitingForWildColor() && nickname.equals(currentGame.getCurrentPlayer())) {
-                        out.println("CHOOSE_COLOR");
-                    }
-
                 } else {
                     out.println("ERROR Nie można zagrać tej karty");
                     out.println("TURN " + currentGame.getCurrentPlayer());
@@ -914,30 +865,6 @@ public class UnoServer extends Thread {
             } else {
                 out.println("ERROR No cards to draw");
             }
-        }
-
-        private void handleWildColor(String color) {
-            if (currentRoomId == -1) {
-                out.println("ERROR Not in a room");
-                return;
-            }
-
-            GameRoom room = gameRooms.get(currentRoomId);
-            if (room == null || !room.isGameInProgress()) {
-                out.println("ERROR No game in progress");
-                return;
-            }
-
-            Game currentGame = room.getGame();
-            if (currentGame == null || nickname == null) {
-                out.println("ERROR No game in progress");
-                return;
-            }
-
-            currentGame.setWildColor(color.toUpperCase());
-            broadcastToRoom(currentRoomId, "WILD_COLOR " + color.toUpperCase());
-            broadcastToRoom(currentRoomId, "TURN " + currentGame.getCurrentPlayer());
-            updateAllPlayerHandsInRoom();
         }
 
         private void sendGameState() {
