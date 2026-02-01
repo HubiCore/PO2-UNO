@@ -13,8 +13,8 @@ public class UnoServer extends Thread {
     private DataBase db;
     private static Map<String, ClientHandler> connectedClients = new ConcurrentHashMap<>();
     private static Map<String, String> clientStatus = new ConcurrentHashMap<>(); // "READY", "NOT_READY"
-    private static Game currentGame;
-    private static boolean gameInProgress = false;
+    private static Map<Integer, GameRoom> gameRooms = new ConcurrentHashMap<>(); // Nowa mapa pokoi
+    private static int nextRoomId = 1;
 
     public void run() {
         db = new DataBase();
@@ -50,6 +50,95 @@ public class UnoServer extends Thread {
         }
     }
 
+    // Klasa reprezentująca pokój gry
+    static class GameRoom {
+        private int roomId;
+        private List<String> players;
+        private Game currentGame;
+        private boolean gameInProgress;
+        private String roomStatus; // "WAITING", "FULL", "IN_PROGRESS"
+
+        public GameRoom(int roomId) {
+            this.roomId = roomId;
+            this.players = new ArrayList<>();
+            this.gameInProgress = false;
+            this.roomStatus = "WAITING";
+        }
+
+        public boolean addPlayer(String player) {
+            if (players.size() >= 4 || gameInProgress) {
+                return false;
+            }
+            players.add(player);
+            if (players.size() == 4) {
+                roomStatus = "FULL";
+            }
+            return true;
+        }
+
+        public boolean removePlayer(String player) {
+            boolean removed = players.remove(player);
+            if (removed) {
+                if (players.size() < 4 && !gameInProgress) {
+                    roomStatus = "WAITING";
+                }
+            }
+            return removed;
+        }
+
+        public void startGame() {
+            if (players.size() >= 2 && players.size() <= 4 && !gameInProgress) {
+                currentGame = new Game(new ArrayList<>(players));
+                gameInProgress = true;
+                roomStatus = "IN_PROGRESS";
+            }
+        }
+
+        public void endGame() {
+            currentGame = null;
+            gameInProgress = false;
+            roomStatus = "WAITING";
+        }
+
+        // Gettery i inne metody
+        public int getRoomId() { return roomId; }
+        public List<String> getPlayers() { return players; }
+        public Game getGame() { return currentGame; }
+        public boolean isGameInProgress() { return gameInProgress; }
+        public String getRoomStatus() { return roomStatus; }
+        public boolean isFull() { return players.size() >= 4; }
+        public boolean isEmpty() { return players.isEmpty(); }
+    }
+
+    // Metody do zarządzania pokojami
+    private static synchronized GameRoom createNewRoom() {
+        int roomId = nextRoomId++;
+        GameRoom room = new GameRoom(roomId);
+        gameRooms.put(roomId, room);
+        System.out.println("Utworzono nowy pokój: " + roomId);
+        return room;
+    }
+
+    private static GameRoom findAvailableRoomForPlayer(String player) {
+        // 1. Spróbuj znaleźć pokój, w którym gracz już jest
+        for (GameRoom room : gameRooms.values()) {
+            if (room.getPlayers().contains(player)) {
+                return room;
+            }
+        }
+
+        // 2. Spróbuj znaleźć pokój z miejscem, który nie jest w trakcie gry
+        for (GameRoom room : gameRooms.values()) {
+            if (!room.isGameInProgress() && !room.isFull()) {
+                return room;
+            }
+        }
+
+        // 3. Jeśli nie ma dostępnego pokoju, utwórz nowy
+        return createNewRoom();
+    }
+
+    // Pełna klasa Game z wszystkimi metodami
     static class Game {
         private List<String> players;
         private Map<String, List<Cart>> hands;
@@ -91,8 +180,6 @@ public class UnoServer extends Thread {
                 currentColor = firstCard.getKolor();
                 currentValue = firstCard.getWartosc();
             }
-
-            gameInProgress = true;
         }
 
         private void initDeck() {
@@ -110,6 +197,11 @@ public class UnoServer extends Thread {
                 }
             }
 
+            // Dodaj karty Wild
+            for (int i = 0; i < 4; i++) {
+                deck.add(new Cart("WILD", "W"));
+                deck.add(new Cart("WILD", "W4"));
+            }
         }
 
         private void shuffleDeck() {
@@ -236,6 +328,21 @@ public class UnoServer extends Thread {
                     }
                     nextPlayer();
                     break;
+                case "W":
+                    waitingForWildColor = true;
+                    break;
+                case "W4":
+                    waitingForWildColor = true;
+                    nextPlayer();
+                    String nextPlayer2 = getCurrentPlayer();
+                    for (int i = 0; i < 4; i++) {
+                        Cart drawnCard = drawFromDeck();
+                        if (drawnCard != null) {
+                            hands.get(nextPlayer2).add(drawnCard);
+                        }
+                    }
+                    nextPlayer();
+                    break;
             }
         }
 
@@ -284,6 +391,7 @@ public class UnoServer extends Thread {
         private PrintWriter out;
         private BufferedReader in;
         private String nickname;
+        private int currentRoomId = -1; // ID pokoju, w którym znajduje się gracz
 
         public ClientHandler(Socket socket, Connection conn, DataBase db) {
             this.clientSocket = socket;
@@ -337,7 +445,6 @@ public class UnoServer extends Thread {
                 System.out.println("Otrzymano inicjalizację gry");
                 initialize_game();
             } else if ("TOP5".equalsIgnoreCase(inputLine)) {
-                // Pozwalamy na TOP5 bez logowania
                 String top5 = db.Top5_Best(conn);
                 System.out.println(top5);
                 out.println("TOP5 " + top5);
@@ -347,6 +454,20 @@ public class UnoServer extends Thread {
                     return;
                 }
                 broadcastUserList();
+            } else if ("ROOM_LIST".equalsIgnoreCase(inputLine)) {
+                sendRoomList();
+            } else if (inputLine.startsWith("JOIN_ROOM ")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
+                joinRoom(inputLine.substring(10));
+            } else if (inputLine.startsWith("CREATE_ROOM")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
+                createRoom();
             } else if (inputLine.startsWith("PLAY ")) {
                 if (nickname == null) {
                     out.println("ERROR_NOT_LOGGED_IN");
@@ -398,12 +519,6 @@ public class UnoServer extends Thread {
                 return;
             }
 
-            if (gameInProgress) {
-                System.out.println("Serwer: Gra w trakcie, odmowa logowania");
-                out.println("LOGIN_ERROR Game in progress");
-                return;
-            }
-
             boolean userExists = db.is_player(conn, username);
             System.out.println("Serwer: Użytkownik istnieje w bazie: " + userExists);
 
@@ -447,17 +562,83 @@ public class UnoServer extends Thread {
             System.out.println("Serwer: Wysyłam LOGIN_SUCCESS do: " + username);
             out.println("LOGIN_SUCCESS " + username);
 
-            // WAŻNE: Czekamy chwilę przed wysłaniem broadcastu
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            // Automatyczne przypisanie do dostępnego pokoju
+            GameRoom room = findAvailableRoomForPlayer(username);
+            currentRoomId = room.getRoomId();
+            if (room.addPlayer(username)) {
+                out.println("ROOM_ASSIGNED " + currentRoomId);
+                broadcastToRoom(currentRoomId, "USER_JOINED " + username);
+                broadcastUserListToRoom(currentRoomId);
             }
 
-            broadcastUserList();
-            broadcastMessage("USER_JOINED " + username);
-
             System.out.println("Serwer: Login zakończony pomyślnie dla: " + username);
+        }
+
+        private void sendRoomList() {
+            StringBuilder roomList = new StringBuilder("ROOM_LIST ");
+            for (GameRoom room : gameRooms.values()) {
+                roomList.append(room.getRoomId())
+                        .append(":")
+                        .append(room.getPlayers().size())
+                        .append("/4:")
+                        .append(room.getRoomStatus())
+                        .append(",");
+            }
+            out.println(roomList.toString());
+        }
+
+        private void joinRoom(String roomIdStr) {
+            try {
+                int roomId = Integer.parseInt(roomIdStr);
+                GameRoom room = gameRooms.get(roomId);
+
+                if (room == null) {
+                    out.println("ERROR Room does not exist");
+                    return;
+                }
+
+                if (room.isGameInProgress()) {
+                    out.println("ERROR Game already in progress");
+                    return;
+                }
+
+                if (room.isFull()) {
+                    out.println("ERROR Room is full");
+                    return;
+                }
+
+                // Opuść obecny pokój
+                if (currentRoomId != -1) {
+                    GameRoom currentRoom = gameRooms.get(currentRoomId);
+                    if (currentRoom != null) {
+                        currentRoom.removePlayer(nickname);
+                        broadcastToRoom(currentRoomId, "USER_LEFT " + nickname);
+                        if (currentRoom.isEmpty()) {
+                            gameRooms.remove(currentRoomId);
+                        }
+                    }
+                }
+
+                // Dołącz do nowego pokoju
+                currentRoomId = roomId;
+                if (room.addPlayer(nickname)) {
+                    out.println("ROOM_JOINED " + roomId);
+                    broadcastToRoom(currentRoomId, "USER_JOINED " + nickname);
+                    broadcastUserListToRoom(currentRoomId);
+                } else {
+                    out.println("ERROR Cannot join room");
+                }
+            } catch (NumberFormatException e) {
+                out.println("ERROR Invalid room ID");
+            }
+        }
+
+        private void createRoom() {
+            GameRoom newRoom = createNewRoom();
+            currentRoomId = newRoom.getRoomId();
+            newRoom.addPlayer(nickname);
+            out.println("ROOM_CREATED " + currentRoomId);
+            broadcastUserListToRoom(currentRoomId);
         }
 
         private void handleReady(String nick) {
@@ -466,18 +647,30 @@ public class UnoServer extends Thread {
                 return;
             }
 
-            if (gameInProgress) {
+            if (currentRoomId == -1) {
+                out.println("ERROR Not in a room");
+                return;
+            }
+
+            GameRoom room = gameRooms.get(currentRoomId);
+            if (room == null) {
+                out.println("ERROR Room not found");
+                return;
+            }
+
+            if (room.isGameInProgress()) {
                 out.println("ERROR_GAME_IN_PROGRESS");
                 return;
             }
 
             clientStatus.put(nick, "READY");
-            broadcastMessage("READY " + nick);
+            broadcastToRoom(currentRoomId, "READY " + nick);
 
+            // Sprawdź czy wszyscy w pokoju są gotowi
             boolean allReady = true;
             int readyCount = 0;
-            for (String status : clientStatus.values()) {
-                if ("READY".equals(status)) {
+            for (String player : room.getPlayers()) {
+                if ("READY".equals(clientStatus.get(player))) {
                     readyCount++;
                 } else {
                     allReady = false;
@@ -485,7 +678,8 @@ public class UnoServer extends Thread {
             }
 
             if (allReady && readyCount >= 2 && readyCount <= 4) {
-                broadcastMessage("START_GAME");
+                broadcastToRoom(currentRoomId, "START_GAME");
+                room.startGame();
             }
         }
 
@@ -495,8 +689,13 @@ public class UnoServer extends Thread {
                 return;
             }
 
+            if (currentRoomId == -1) {
+                out.println("ERROR Not in a room");
+                return;
+            }
+
             clientStatus.put(nick, "NOT_READY");
-            broadcastMessage("UNREADY " + nick);
+            broadcastToRoom(currentRoomId, "UNREADY " + nick);
         }
 
         private void handleExit(String nick) {
@@ -505,48 +704,85 @@ public class UnoServer extends Thread {
                 return;
             }
 
+            if (currentRoomId != -1) {
+                GameRoom room = gameRooms.get(currentRoomId);
+                if (room != null) {
+                    room.removePlayer(nick);
+                    broadcastToRoom(currentRoomId, "USER_LEFT " + nick);
+                    if (room.isEmpty()) {
+                        gameRooms.remove(currentRoomId);
+                    } else {
+                        broadcastUserListToRoom(currentRoomId);
+                    }
+                }
+            }
+
             connectedClients.remove(nick);
             clientStatus.remove(nick);
-            broadcastUserList();
-            broadcastMessage("USER_LEFT " + nick);
         }
 
         private void initialize_game() {
-            List<String> players = new ArrayList<>(connectedClients.keySet());
-            currentGame = new Game(players);
+            if (currentRoomId == -1) {
+                out.println("ERROR Not in a room");
+                return;
+            }
+
+            GameRoom room = gameRooms.get(currentRoomId);
+            if (room == null || !room.isGameInProgress()) {
+                out.println("ERROR Game not started");
+                return;
+            }
+
+            Game currentGame = room.getGame();
+            List<String> players = currentGame.getPlayers();
+
             for (String player : players) {
                 ClientHandler client = connectedClients.get(player);
-                List<Cart> hand = currentGame.getHandForPlayer(player);
-                StringBuilder handStr = new StringBuilder();
-                for (int i = 0; i < hand.size(); i++) {
-                    handStr.append(hand.get(i).toString());
-                    if (i < hand.size() - 1) handStr.append(",");
-                }
-                Cart topCard = currentGame.getTopCard();
-                String topCardStr = topCard != null ? topCard.toString() : "";
-                String currentPlayer = currentGame.getCurrentPlayer();
-                StringBuilder opponentsStr = new StringBuilder();
-                for (String p : players) {
-                    if (!p.equals(player)) {
-                        int handSize = currentGame.getHandForPlayer(p).size();
-                        opponentsStr.append(p).append(":").append(handSize);
-                        if (!p.equals(players.get(players.size() - 1))) {
-                            opponentsStr.append(",");
+                if (client != null) {
+                    List<Cart> hand = currentGame.getHandForPlayer(player);
+                    StringBuilder handStr = new StringBuilder();
+                    for (int i = 0; i < hand.size(); i++) {
+                        handStr.append(hand.get(i).toString());
+                        if (i < hand.size() - 1) handStr.append(",");
+                    }
+                    Cart topCard = currentGame.getTopCard();
+                    String topCardStr = topCard != null ? topCard.toString() : "";
+                    String currentPlayer = currentGame.getCurrentPlayer();
+                    StringBuilder opponentsStr = new StringBuilder();
+                    for (String p : players) {
+                        if (!p.equals(player)) {
+                            int handSize = currentGame.getHandForPlayer(p).size();
+                            opponentsStr.append(p).append(":").append(handSize);
+                            if (!p.equals(players.get(players.size() - 1))) {
+                                opponentsStr.append(",");
+                            }
                         }
                     }
+
+                    String initMessage = String.format("INIT_GAME %s %s %s %s",
+                            topCardStr,
+                            currentPlayer,
+                            opponentsStr.toString(),
+                            handStr.toString());
+
+                    client.out.println(initMessage);
                 }
-
-                String initMessage = String.format("INIT_GAME %s %s %s %s",
-                        topCardStr,
-                        currentPlayer,
-                        opponentsStr.toString(),
-                        handStr.toString());
-
-                client.out.println(initMessage);
             }
         }
 
         private void handlePlay(String cardStr) {
+            if (currentRoomId == -1) {
+                out.println("ERROR Not in a room");
+                return;
+            }
+
+            GameRoom room = gameRooms.get(currentRoomId);
+            if (room == null || !room.isGameInProgress()) {
+                out.println("ERROR No game in progress");
+                return;
+            }
+
+            Game currentGame = room.getGame();
             if (currentGame == null || nickname == null) {
                 out.println("ERROR No game in progress");
                 return;
@@ -569,11 +805,11 @@ public class UnoServer extends Thread {
                         System.out.println("Gracz " + nickname + " wygrał grę!");
                         db.increaseWins(conn, nickname);
 
-                        // Wyślij informację o zwycięzcy do wszystkich graczy
-                        broadcastMessage("WINNER " + nickname);
+                        // Wyślij informację o zwycięzcy do wszystkich graczy w pokoju
+                        broadcastToRoom(currentRoomId, "WINNER " + nickname);
 
-                        // Zakończ grę
-                        endGame();
+                        // Zakończ grę w pokoju
+                        room.endGame();
                         return;
                     }
 
@@ -632,6 +868,18 @@ public class UnoServer extends Thread {
         }
 
         private void handleDraw() {
+            if (currentRoomId == -1) {
+                out.println("ERROR Not in a room");
+                return;
+            }
+
+            GameRoom room = gameRooms.get(currentRoomId);
+            if (room == null || !room.isGameInProgress()) {
+                out.println("ERROR No game in progress");
+                return;
+            }
+
+            Game currentGame = room.getGame();
             if (currentGame == null || nickname == null) {
                 out.println("ERROR No game in progress");
                 return;
@@ -658,29 +906,53 @@ public class UnoServer extends Thread {
                 // Przejdź do następnego gracza
                 currentGame.nextPlayer();
 
-                // Powiadom wszystkich graczy o zmianie tury
-                broadcastMessage("TURN " + currentGame.getCurrentPlayer());
+                // Powiadom wszystkich graczy w pokoju o zmianie tury
+                broadcastToRoom(currentRoomId, "TURN " + currentGame.getCurrentPlayer());
 
-                // Wyślij zaktualizowane informacje o rękach wszystkich graczy
-                updateAllPlayerHands();
+                // Wyślij zaktualizowane informacje o rękach wszystkich graczy w pokoju
+                updateAllPlayerHandsInRoom();
             } else {
                 out.println("ERROR No cards to draw");
             }
         }
 
         private void handleWildColor(String color) {
+            if (currentRoomId == -1) {
+                out.println("ERROR Not in a room");
+                return;
+            }
+
+            GameRoom room = gameRooms.get(currentRoomId);
+            if (room == null || !room.isGameInProgress()) {
+                out.println("ERROR No game in progress");
+                return;
+            }
+
+            Game currentGame = room.getGame();
             if (currentGame == null || nickname == null) {
                 out.println("ERROR No game in progress");
                 return;
             }
 
             currentGame.setWildColor(color.toUpperCase());
-            broadcastMessage("WILD_COLOR " + color.toUpperCase());
-            broadcastMessage("TURN " + currentGame.getCurrentPlayer());
-            updateAllPlayerHands();
+            broadcastToRoom(currentRoomId, "WILD_COLOR " + color.toUpperCase());
+            broadcastToRoom(currentRoomId, "TURN " + currentGame.getCurrentPlayer());
+            updateAllPlayerHandsInRoom();
         }
 
         private void sendGameState() {
+            if (currentRoomId == -1) {
+                out.println("ERROR Not in a room");
+                return;
+            }
+
+            GameRoom room = gameRooms.get(currentRoomId);
+            if (room == null || !room.isGameInProgress()) {
+                out.println("ERROR No game in progress");
+                return;
+            }
+
+            Game currentGame = room.getGame();
             if (currentGame != null && nickname != null) {
                 List<Cart> hand = currentGame.getHandForPlayer(nickname);
                 StringBuilder handStr = new StringBuilder("HAND ");
@@ -712,7 +984,15 @@ public class UnoServer extends Thread {
             }
         }
 
-        private void updateAllPlayerHands() {
+        private void updateAllPlayerHandsInRoom() {
+            GameRoom room = gameRooms.get(currentRoomId);
+            if (room == null || !room.isGameInProgress()) {
+                return;
+            }
+
+            Game currentGame = room.getGame();
+            if (currentGame == null) return;
+
             for (String player : currentGame.getPlayers()) {
                 ClientHandler client = connectedClients.get(player);
                 if (client != null) {
@@ -740,40 +1020,55 @@ public class UnoServer extends Thread {
             }
         }
 
-        private void endGame() {
-            currentGame = null;
-            gameInProgress = false;
-            for (String player : clientStatus.keySet()) {
-                clientStatus.put(player, "NOT_READY");
-            }
-            broadcastMessage("GAME_ENDED");
-        }
-
         private void broadcastUserList() {
-            StringBuilder userList = new StringBuilder("USERLIST ");
-            for (String user : connectedClients.keySet()) {
-                userList.append(user).append(":").append(clientStatus.get(user)).append(",");
+            if (currentRoomId == -1) {
+                out.println("ERROR Not in a room");
+                return;
             }
-            broadcastMessage(userList.toString());
+            broadcastUserListToRoom(currentRoomId);
         }
 
-        private void broadcastMessage(String message) {
-            for (ClientHandler client : connectedClients.values()) {
-                if (client != this && client.out != null) {
+        private void broadcastUserListToRoom(int roomId) {
+            GameRoom room = gameRooms.get(roomId);
+            if (room == null) return;
+
+            StringBuilder userList = new StringBuilder("USERLIST ");
+            for (String user : room.getPlayers()) {
+                userList.append(user).append(":").append(clientStatus.getOrDefault(user, "NOT_READY")).append(",");
+            }
+            broadcastToRoom(roomId, userList.toString());
+        }
+
+        private void broadcastToRoom(int roomId, String message) {
+            GameRoom room = gameRooms.get(roomId);
+            if (room == null) return;
+
+            for (String player : room.getPlayers()) {
+                ClientHandler client = connectedClients.get(player);
+                if (client != null && client.out != null) {
                     client.out.println(message);
                 }
-            }
-            if (out != null) {
-                out.println(message);
             }
         }
 
         private void cleanup() {
             if (nickname != null) {
+                // Usuń gracza z pokoju
+                if (currentRoomId != -1) {
+                    GameRoom room = gameRooms.get(currentRoomId);
+                    if (room != null) {
+                        room.removePlayer(nickname);
+                        broadcastToRoom(currentRoomId, "USER_LEFT " + nickname);
+                        if (room.isEmpty()) {
+                            gameRooms.remove(currentRoomId);
+                        } else {
+                            broadcastUserListToRoom(currentRoomId);
+                        }
+                    }
+                }
+
                 connectedClients.remove(nickname);
                 clientStatus.remove(nickname);
-                broadcastUserList();
-                broadcastMessage("USER_LEFT " + nickname);
             }
             try {
                 if (in != null) in.close();
