@@ -12,7 +12,10 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
 public class UnoController implements Initializable {
     @FXML private StackPane stol;
     @FXML private HBox rekaGracza;
@@ -193,6 +196,14 @@ public class UnoController implements Initializable {
             showError(trimmed);
         }
         else if (trimmed.startsWith("GAME_ENDED")) {
+            gameEnded();
+        }
+        else if (trimmed.startsWith("WINNER ")) {
+            System.out.println("Otrzymano informację o zwycięzcy");
+            handleWinner(trimmed.substring(7));
+        }
+        else if (trimmed.startsWith("GAME_ENDED")) {
+            System.out.println("Gra zakończona przez serwer");
             gameEnded();
         }
         else {
@@ -522,30 +533,120 @@ public class UnoController implements Initializable {
     }
 
     private void handleWinner(String winner) {
-        if (winner.equals(nickname)) {
-            instrukcja.setText("WYGRAŁEŚ!");
-            instrukcja.setStyle("-fx-text-fill: gold; -fx-font-size: 48px; -fx-font-weight: bold;");
-        } else {
-            instrukcja.setText("Wygrał gracz " + winner);
-            instrukcja.setStyle("-fx-text-fill: silver; -fx-font-size: 36px; -fx-font-weight: bold;");
-        }
-
-        zablokujKarty();
-
         Platform.runLater(() -> {
+            // Wyświetl komunikat o zwycięzcy
+            if (winner.equals(nickname)) {
+                instrukcja.setText("WYGRAŁEŚ!");
+                instrukcja.setStyle("-fx-text-fill: gold; -fx-font-size: 48px; -fx-font-weight: bold;");
+            } else {
+                instrukcja.setText("Wygrał gracz " + winner);
+                instrukcja.setStyle("-fx-text-fill: silver; -fx-font-size: 36px; -fx-font-weight: bold;");
+            }
+
+            zablokujKarty();
+
+            // Wyłącz przycisk dobierania
+            if (przyciskDobierania != null) {
+                przyciskDobierania.setDisable(true);
+                przyciskDobierania.setStyle("-fx-opacity: 0.5;");
+            }
+
+            // Pokaż alert z informacją o wygranej
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
             alert.setTitle("Koniec gry!");
             alert.setHeaderText(null);
-            alert.setContentText(winner.equals(nickname) ?
-                    "Gratulacje! Wygrałeś grę!" :
-                    "Wygrał gracz " + winner);
-            alert.showAndWait();
+            if (winner.equals(nickname)) {
+                alert.setContentText("Gratulacje! Wygrałeś grę!\nPowrót do menu głównego za 3 sekundy...");
+            } else {
+                alert.setContentText("Wygrał gracz " + winner + "!\nPowrót do menu głównego za 3 sekundy...");
+            }
+
+            alert.show();
+
+            // Automatyczne przejście do menu głównego po 3 sekundach
+            new java.util.Timer().schedule(
+                    new java.util.TimerTask() {
+                        @Override
+                        public void run() {
+                            Platform.runLater(() -> {
+                                try {
+                                    // Zamknij alert jeśli jeszcze jest otwarty
+                                    alert.close();
+
+                                    // Załaduj menu główne
+                                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/main_menu.fxml"));
+                                    Parent root = loader.load();
+
+                                    // Pobierz aktualne okno
+                                    Stage stage = (Stage) instrukcja.getScene().getWindow();
+
+                                    // Ustaw nową scenę
+                                    Scene scene = new Scene(root);
+                                    stage.setScene(scene);
+                                    stage.setTitle("UNO - Menu Główne");
+                                    stage.show();
+
+                                    // Zamknij połączenie z serwerem
+                                    if (clientConnection != null) {
+                                        clientConnection.disconnect();
+                                    }
+
+                                } catch (Exception e) {
+                                    System.err.println("Błąd podczas przełączania do menu: " + e.getMessage());
+                                    e.printStackTrace();
+                                }
+                            });
+                        }
+                    },
+                    3000  // 3 sekundy opóźnienia
+            );
         });
     }
 
     private void gameEnded() {
         gameActive.set(false);
-        instrukcja.setText("Gra zakończona");
+
+        Platform.runLater(() -> {
+            instrukcja.setText("Gra zakończona");
+            instrukcja.setStyle("-fx-text-fill: red; -fx-font-size: 36px; -fx-font-weight: bold;");
+
+            // Pokaż alert informacyjny
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Gra zakończona");
+            alert.setHeaderText(null);
+            alert.setContentText("Gra została zakończona przez serwer.\nPowrót do menu głównego za 3 sekundy...");
+            alert.show();
+
+            // Automatyczne przejście do menu głównego
+            new java.util.Timer().schedule(
+                    new java.util.TimerTask() {
+                        @Override
+                        public void run() {
+                            Platform.runLater(() -> {
+                                try {
+                                    alert.close();
+                                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/MainMenu.fxml"));
+                                    Parent root = loader.load();
+
+                                    Stage stage = (Stage) instrukcja.getScene().getWindow();
+                                    Scene scene = new Scene(root);
+                                    stage.setScene(scene);
+                                    stage.setTitle("UNO - Menu Główne");
+                                    stage.show();
+
+                                    if (clientConnection != null) {
+                                        clientConnection.disconnect();
+                                    }
+
+                                } catch (Exception e) {
+                                    System.err.println("Błąd podczas przełączania do menu: " + e.getMessage());
+                                }
+                            });
+                        }
+                    },
+                    3000
+            );
+        });
     }
 
     private void promptColorChoice() {
