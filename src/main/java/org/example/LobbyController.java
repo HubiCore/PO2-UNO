@@ -27,6 +27,7 @@ public class LobbyController {
     private ClientConnection clientConnection;
     private String nickname;
     private Thread messageReceiver;
+    private volatile boolean running = false;
 
     @FXML
     public void initialize() {
@@ -40,28 +41,40 @@ public class LobbyController {
 
         if (clientConnection != null && clientConnection.isConnected()) {
             startMessageReceiver();
+        } else {
+            showError("Brak połączenia z serwerem");
+            try {
+                goBackToMainMenu();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
     private void startMessageReceiver() {
+        if (running) {
+            return; // Już działa
+        }
+
+        running = true;
         messageReceiver = new Thread(() -> {
-            try {
-                while (clientConnection != null && clientConnection.isConnected()) {
-                    String message = clientConnection.receiveMessage();
-                    if (message != null) {
-                        Platform.runLater(() -> handleServerMessage(message));
-                    }
+            while (running && clientConnection != null && clientConnection.isConnected()) {
+                String message = clientConnection.receiveMessage();
+                if (message == null) {
+                    // Połączenie zostało zamknięte
+                    Platform.runLater(() -> {
+                        showError("Utracono połączenie z serwerem");
+                        try {
+                            goBackToMainMenu();
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                        }
+                    });
+                    break;
                 }
-            } catch (IOException e) {
-                Platform.runLater(() -> {
-                    showError("Utracono połączenie z serwerem");
-                    try {
-                        goBackToMainMenu();
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
-                });
+                Platform.runLater(() -> handleServerMessage(message));
             }
+            running = false;
         });
         messageReceiver.setDaemon(true);
         messageReceiver.start();
@@ -99,47 +112,61 @@ public class LobbyController {
     }
 
     private void updateUserList(String usersStr) {
-        userList.clear();
-        String[] users = usersStr.split(",");
-        for (String user : users) {
-            if (!user.isEmpty()) {
-                userList.add(user);
+        Platform.runLater(() -> {
+            userList.clear();
+            String[] users = usersStr.split(",");
+            for (String user : users) {
+                if (!user.isEmpty()) {
+                    userList.add(user);
+                }
             }
-        }
 
-        int playerCount = userList.size();
-        if (playerCount >= 4) {
-            readyButton.setDisable(true);
-        } else if (playerCount >= 2) {
-            readyButton.setDisable(false);
-        } else {
-            readyButton.setDisable(true);
-        }
+            int playerCount = userList.size();
+            if (playerCount >= 4) {
+                readyButton.setDisable(true);
+            } else if (playerCount >= 2) {
+                readyButton.setDisable(false);
+            } else {
+                readyButton.setDisable(true);
+            }
+        });
     }
 
     private void updateUserStatus(String user, boolean ready) {
-        for (int i = 0; i < userList.size(); i++) {
-            String listUser = userList.get(i);
-            if (listUser.startsWith(user)) {
-                String newStatus = ready ? "✓ " + user : user;
-                userList.set(i, newStatus);
-                break;
+        Platform.runLater(() -> {
+            for (int i = 0; i < userList.size(); i++) {
+                String listUser = userList.get(i);
+                // Usuń ewentualny znacznik ✓
+                String baseUser = listUser.replace("✓ ", "");
+                if (baseUser.equals(user)) {
+                    String newStatus = ready ? "✓ " + user : user;
+                    userList.set(i, newStatus);
+                    break;
+                }
             }
-        }
+        });
     }
 
     @FXML
     private void handleReadyButton() {
         if (!isReady) {
             if (clientConnection != null) {
-                clientConnection.sendMessage("READY " + nickname);
+                boolean sent = clientConnection.sendMessage("READY " + nickname);
+                if (!sent) {
+                    showError("Nie udało się wysłać statusu gotowości");
+                    return;
+                }
             }
             readyButton.setText("Gotowość ✓");
             readyButton.setStyle("-fx-background-color: green; -fx-text-fill: white;");
             isReady = true;
         } else {
             if (clientConnection != null) {
-                clientConnection.sendMessage("UNREADY " + nickname);
+                boolean sent = clientConnection.sendMessage("UNREADY " + nickname);
+                if (!sent) {
+                    showError("Nie udało się wysłać statusu niegotowości");
+                    return;
+                }
             }
             readyButton.setText("Gotowy?");
             readyButton.setStyle("");
@@ -149,6 +176,8 @@ public class LobbyController {
 
     @FXML
     private void handleExitButton(ActionEvent event) throws IOException {
+        running = false;
+
         if (clientConnection != null) {
             clientConnection.sendMessage("EXIT " + nickname);
             clientConnection.disconnect();
@@ -172,6 +201,8 @@ public class LobbyController {
     }
 
     private void switch_to_game() throws IOException {
+        running = false;
+
         if (messageReceiver != null) {
             messageReceiver.interrupt();
         }

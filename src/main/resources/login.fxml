@@ -8,16 +8,25 @@
 
 <AnchorPane prefHeight="1080.0" prefWidth="1920.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.LoginController">
     <children>
-        <Text fill="#2eff00" layoutX="745.0" layoutY="308.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Podaj nick" />
-        <TextField fx:id="loginTextField" layoutX="750.0" layoutY="333.0" />
-        <Button layoutX="750.0" layoutY="478.0" mnemonicParsing="false" onAction="#handlePlayButton" text="Graj" />
-        <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
+        <Text fill="#2eff00" layoutX="555.0" layoutY="308.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Podaj nick" />
+        <TextField fx:id="loginTextField" layoutX="600.0" layoutY="333.0" prefWidth="300" />
+
+        <!-- DODANE: Pole hasła -->
+        <Text fill="#2eff00" layoutX="550.0" layoutY="508.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Podaj hasło" />
+        <PasswordField fx:id="passwordField" layoutX="600.0" layoutY="533.0" prefWidth="300" />
+
+        <!-- DODANE: Etykieta błędu -->
+        <Label fx:id="errorLabel" layoutX="700.0" layoutY="500.0" textFill="red" visible="false" prefWidth="300" />
+
+        <Button layoutX="880.0" layoutY="650.0" mnemonicParsing="false" onAction="#handlePlayButton" text="Graj" />
+        <Button layoutX="550.0" layoutY="650.0" mnemonicParsing="false" onAction="#switch_to_main_menu" text="Powrót" />
+
         <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="1600.0" layoutY="30.0" pickOnBounds="true" preserveRatio="true">
             <image>
                 <Image url="@assets/textures/earth_spinning.gif" />
             </image>
-
         </ImageView>
+
         <!-- rysowanie okienka co symuluje okienko -->
         <Rectangle arcHeight="10.0" arcWidth="8.0" fill="#ffffff00" height="273.0" layoutX="1600.0" layoutY="30.0" stroke="#2eff00" strokeType="INSIDE" strokeWidth="4.0" width="300.0" />
         <Line endX="298" endY="20.0" layoutX="1600" layoutY="50" startX="2.0" startY="20.0" stroke="#2eff00" strokeWidth="4.0" />
@@ -32,9 +41,8 @@
         <Line endX="0" endY="-15" layoutX="1791" layoutY="51" startX="0" startY="17" stroke="#2eff00" strokeWidth="4.0" />
         <Text fill="#2eff00" layoutX="1610" layoutY="60" strokeType="OUTSIDE" strokeWidth="0.0" text="HZ2202 no..8">
             <font>
-            <Font size="20.0" />
-         </font></Text>
-
-
+                <Font size="20.0" />
+            </font>
+        </Text>
     </children>
 </AnchorPane>
