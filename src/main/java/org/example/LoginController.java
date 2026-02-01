@@ -1,3 +1,9 @@
+/**
+ * Kontroler obsługujący logowanie użytkownika do aplikacji.
+ * Zarządza interfejsem logowania, walidacją danych, komunikacją z serwerem
+ * oraz przejściem do głównego menu lub lobby po pomyślnym uwierzytelnieniu.
+ *
+ */
 package org.example;
 
 import javafx.fxml.FXML;
@@ -17,18 +23,52 @@ import java.io.IOException;
 import java.util.function.UnaryOperator;
 
 public class LoginController {
+    /**
+     * Pole tekstowe do wprowadzenia loginu użytkownika.
+     * Akceptuje tylko litery (w tym polskie znaki diakrytyczne) do 20 znaków.
+     */
     @FXML
     private TextField loginTextField;
+
+    /**
+     * Pole do wprowadzenia hasła użytkownika.
+     * Akceptuje do 30 znaków dowolnego typu.
+     */
     @FXML
     private PasswordField passwordField;
+
+    /**
+     * Etykieta wyświetlająca komunikaty o błędach logowania.
+     */
     @FXML
     private Label errorLabel;
 
+    /**
+     * Przechowuje login użytkownika po pomyślnym zatwierdzeniu formularza.
+     */
     private String savedLoginText;
+
+    /**
+     * Przechowuje hasło użytkownika po pomyślnym zatwierdzeniu formularza.
+     */
     private String savedPassword;
+
+    /**
+     * Połączenie klienta z serwerem gry.
+     */
     private ClientConnection clientConnection;
+
+    /**
+     * Serwis odpowiedzialny za uwierzytelnianie użytkowników.
+     */
     private AuthenticationService authService;
 
+    /**
+     * Inicjalizuje kontroler po załadowaniu pliku FXML.
+     * Konfiguruje filtry walidacyjne dla pól tekstowych, ukrywa etykietę błędów
+     * i tworzy instancję serwisu uwierzytelniania.
+     * Zawiera także zakomentowany kod do automatycznego wypełnienia pól dla celów testowych.
+     */
     @FXML
     public void initialize() {
         authService = new AuthenticationService();
@@ -55,6 +95,14 @@ public class LoginController {
         // passwordField.setText("test123");
     }
 
+    /**
+     * Obsługuje kliknięcie przycisku "Graj".
+     * Wykonuje walidację danych logowania, nawiązuje połączenie z serwerem,
+     * wysyła dane uwierzytelniające i oczekuje na odpowiedź serwera.
+     *
+     * @param event zdarzenie akcji przycisku
+     * @throws IOException w przypadku błędu ładowania widoku lobby
+     */
     @FXML
     private void handlePlayButton(ActionEvent event) throws IOException {
         savedLoginText = loginTextField.getText().trim();
@@ -168,6 +216,14 @@ public class LoginController {
         }
     }
 
+    /**
+     * Hashuje hasło używając serwisu AuthenticationService.
+     * Wykorzystuje refleksję do wywołania prywatnej metody hashPassword.
+     * W przypadku niepowodzenia używa zapasowej metody hashowania MD5.
+     *
+     * @param password hasło do zahashowania
+     * @return zahashowane hasło w formacie tekstowym
+     */
     private String hashPasswordUsingAuthService(String password) {
         try {
             java.lang.reflect.Method method = AuthenticationService.class.getDeclaredMethod("hashPassword", String.class);
@@ -179,6 +235,13 @@ public class LoginController {
         }
     }
 
+    /**
+     * Zapasowa metoda hashowania hasła używająca algorytmu MD5.
+     * Stosowana gdy serwis AuthenticationService nie jest dostępny.
+     *
+     * @param password hasło do zahashowania
+     * @return zahashowane hasło w formacie szesnastkowym
+     */
     private String fallbackHashPassword(String password) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
@@ -196,6 +259,13 @@ public class LoginController {
         }
     }
 
+    /**
+     * Przełącza widok na główne menu aplikacji.
+     * Zamyka istniejące połączenie z serwerem przed przejściem.
+     *
+     * @param event zdarzenie akcji przycisku
+     * @throws IOException w przypadku błędu ładowania widoku głównego menu
+     */
     @FXML
     private void switch_to_main_menu(ActionEvent event) throws IOException {
         if (clientConnection != null && clientConnection.isConnected()) {
@@ -215,6 +285,13 @@ public class LoginController {
         stage.show();
     }
 
+    /**
+     * Przełącza widok na lobby gry po pomyślnym logowaniu.
+     * Przekazuje połączenie z serwerem i dane użytkownika do kontrolera lobby.
+     *
+     * @param event zdarzenie akcji przycisku
+     * @throws IOException w przypadku błędu ładowania widoku lobby
+     */
     @FXML
     private void switch_to_lobby(ActionEvent event) throws IOException {
         System.out.println("Przechodzę do lobby...");
@@ -244,16 +321,31 @@ public class LoginController {
         System.out.println("Przejście do lobby zakończone sukcesem");
     }
 
+    /**
+     * Wyświetla komunikat o błędzie w interfejsie użytkownika.
+     *
+     * @param message treść komunikatu błędu
+     */
     private void showError(String message) {
         System.err.println("BŁĄD: " + message);
         errorLabel.setText(message);
         errorLabel.setVisible(true);
     }
 
+    /**
+     * Zwraca zapisany login użytkownika.
+     *
+     * @return login użytkownika
+     */
     public String getSavedLoginText() {
         return savedLoginText;
     }
 
+    /**
+     * Zwraca zapisane hasło użytkownika.
+     *
+     * @return hasło użytkownika
+     */
     public String getSavedPassword() {
         return savedPassword;
     }

@@ -9,17 +9,35 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
 import java.util.Random;
 
+/**
+ * Klasa reprezentująca kartę do gry UNO.
+ * Zawiera informacje o kolorze i wartości karty, a także generuje jej widok graficzny.
+ * Klasa dostarcza metody do tworzenia kart z ciągów znaków, generowania losowych kart
+ * oraz sprawdzania zgodności kart podczas rozgrywki.
+ *
+ * @see StackPane
+ * @see Color
+ */
 public class Card {
     private String color;
     private String value;
     private StackPane view;
     private StackPane backView;
 
-    // Tablice kolorów i wartości zgodne z Cart.java
+    /** Dostępne kolory kart UNO */
     private static final String[] COLORS = {"RED", "GREEN", "BLUE", "YELLOW"};
+
+    /** Dostępne wartości kart UNO */
     private static final String[] VALUES = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
             "+2", "⏸", "↺"};
 
+    /**
+     * Konstruuje nową kartę o podanym kolorze i wartości.
+     * Automatycznie tworzy widok graficzny karty (przód i tył).
+     *
+     * @param color kolor karty (RED, GREEN, BLUE, YELLOW)
+     * @param value wartość karty (0-9, +2, ⏸, ↺)
+     */
     public Card(String color, String value) {
         this.color = color;
         this.value = value;
@@ -27,6 +45,13 @@ public class Card {
         createBackView();
     }
 
+    /**
+     * Tworzy obiekt Card z ciągu znaków w formacie "kolor:wartość".
+     *
+     * @param cardStr ciąg znaków reprezentujący kartę (np. "RED:5")
+     * @return nowy obiekt Card
+     * @throws IllegalArgumentException jeśli format ciągu jest nieprawidłowy
+     */
     public static Card fromString(String cardStr) {
         String[] parts = cardStr.split(":");
         if (parts.length != 2) {
@@ -35,6 +60,12 @@ public class Card {
         return new Card(parts[0], parts[1]);
     }
 
+    /**
+     * Generuje losową kartę UNO.
+     * Wybiera losowy kolor z dostępnych i losową wartość.
+     *
+     * @return nowa losowo wygenerowana karta
+     */
     public static Card generateRandomCard() {
         Random random = new Random();
         String color = COLORS[random.nextInt(COLORS.length)];
@@ -42,11 +73,21 @@ public class Card {
         return new Card(color, value);
     }
 
+    /**
+     * Zwraca reprezentację tekstową karty w formacie "kolor:wartość".
+     *
+     * @return ciąg znaków reprezentujący kartę
+     */
     @Override
     public String toString() {
         return color + ":" + value;
     }
 
+    /**
+     * Tworzy widok graficzny przodu karty.
+     * Próbuje załadować teksturę z pliku, a jeśli się nie uda, używa stylu CSS.
+     * Widok zawiera kolorowe tło, ramkę i etykietę z wartością karty.
+     */
     private void createView() {
         view = new StackPane();
         view.setMinSize(80, 120);
@@ -117,6 +158,10 @@ public class Card {
         view.setStyle("-fx-cursor: hand;");
     }
 
+    /**
+     * Tworzy widok graficzny tyłu karty (rewers).
+     * Próbuje załadować teksturę z pliku, a jeśli się nie uda, używa domyślnego wzoru.
+     */
     private void createBackView() {
         backView = new StackPane();
         backView.setMinSize(80, 120);
@@ -174,6 +219,11 @@ public class Card {
         }
     }
 
+    /**
+     * Zwraca obiekt Color odpowiadający kolorowi karty.
+     *
+     * @return kolor JavaFX dla danej karty
+     */
     private Color getColorFill() {
         switch (color) {
             case "RED": return Color.RED;
@@ -184,6 +234,11 @@ public class Card {
         }
     }
 
+    /**
+     * Zwraca reprezentację koloru w formacie heksadecymalnym.
+     *
+     * @return ciąg znaków z kodem koloru HEX
+     */
     private String getColorHex() {
         switch (color) {
             case "RED": return "#E53935";
@@ -194,22 +249,49 @@ public class Card {
         }
     }
 
+    /**
+     * Zwraca widok graficzny przodu karty.
+     *
+     * @return StackPane zawierający graficzną reprezentację karty
+     */
     public StackPane getView() {
         return view;
     }
 
+    /**
+     * Zwraca widok graficzny tyłu karty.
+     *
+     * @return StackPane zawierający graficzną reprezentację rewersu karty
+     */
     public StackPane getBackView() {
         return backView;
     }
 
+    /**
+     * Zwraca kolor karty.
+     *
+     * @return kolor karty jako String
+     */
     public String getColor() {
         return color;
     }
 
+    /**
+     * Zwraca wartość karty.
+     *
+     * @return wartość karty jako String
+     */
     public String getValue() {
         return value;
     }
 
+    /**
+     * Sprawdza, czy ta karta może być położona na podanej karcie
+     * zgodnie z zasadami UNO (ten sam kolor lub ta sama wartość).
+     *
+     * @param other karta, na której chcemy położyć obecną kartę
+     * @return true jeśli karty są kompatybilne, false w przeciwnym razie
+     */
     public boolean canPlayOn(Card other) {
         return this.color.equals(other.getColor()) ||
                 this.value.equals(other.getValue());

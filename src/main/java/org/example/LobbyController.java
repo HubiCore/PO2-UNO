@@ -1,3 +1,9 @@
+/**
+ * Klasa kontrolera dla widoku lobby (pokoju oczekiwania) w grze UNO.
+ * Zarządza listą graczy, statusem gotowości oraz komunikacją z serwerem.
+ * Obsługuje przejścia między scenami lobby, menu głównego i gry.
+ *
+ */
 package org.example;
 
 import javafx.application.Platform;
@@ -15,26 +21,54 @@ import javafx.stage.Stage;
 import java.io.IOException;
 
 public class LobbyController {
+
+    /** ListView wyświetlająca listę graczy w lobby */
     @FXML
     private ListView<String> userListView;
+
+    /** Przycisk do zmiany statusu gotowości gracza */
     @FXML
     private Button readyButton;
+
+    /** Przycisk do opuszczenia lobby i powrotu do menu głównego */
     @FXML
     private Button exitButton;
 
+    /** Flaga określająca gotowość bieżącego gracza */
     private boolean isReady = false;
+
+    /** Obserwowalna lista przechowująca nazwy graczy */
     private ObservableList<String> userList;
+
+    /** Połączenie klienta z serwerem */
     private ClientConnection clientConnection;
+
+    /** Nazwa gracza (nickname) */
     private String nickname;
+
+    /** Wątek odbierający wiadomości od serwera */
     private Thread messageReceiver;
+
+    /** Flaga określająca stan działania wątku odbiorczego */
     private volatile boolean running = false;
 
+    /**
+     * Metoda inicjalizująca kontroler. Wywoływana automatycznie po załadowaniu FXML.
+     * Inicjalizuje obserwowalną listę graczy i ustawia ją jako źródło dla ListView.
+     */
     @FXML
     public void initialize() {
         userList = FXCollections.observableArrayList();
         userListView.setItems(userList);
     }
 
+    /**
+     * Konfiguruje połączenie z serwerem i rozpoczyna odbieranie wiadomości.
+     * W przypadku braku połączenia następuje powrót do menu głównego.
+     *
+     * @param connection obiekt ClientConnection reprezentujący połączenie z serwerem
+     * @param nickname nazwa gracza do wyświetlenia w lobby
+     */
     public void setupConnection(ClientConnection connection, String nickname) {
         this.clientConnection = connection;
         this.nickname = nickname;
@@ -42,7 +76,7 @@ public class LobbyController {
         if (clientConnection != null && clientConnection.isConnected()) {
             startMessageReceiver();
         } else {
-            showError("Brak połączenia z serwerem");
+            System.err.println("Brak połączenia z serwerem");
             try {
                 goBackToMainMenu();
             } catch (IOException e) {
@@ -51,6 +85,10 @@ public class LobbyController {
         }
     }
 
+    /**
+     * Rozpoczyna wątek odbierający wiadomości od serwera.
+     * Wątek działa w tle i przetwarza przychodzące komunikaty.
+     */
     private void startMessageReceiver() {
         if (running) {
             return; // Już działa
@@ -63,7 +101,7 @@ public class LobbyController {
                 if (message == null) {
                     // Połączenie zostało zamknięte
                     Platform.runLater(() -> {
-                        showError("Utracono połączenie z serwerem");
+                        System.err.println("Utracono połączenie z serwerem");
                         try {
                             goBackToMainMenu();
                         } catch (IOException ex) {
@@ -80,6 +118,12 @@ public class LobbyController {
         messageReceiver.start();
     }
 
+    /**
+     * Przetwarza wiadomość otrzymaną od serwera.
+     * Wywołuje odpowiednie metody w zależności od typu komunikatu.
+     *
+     * @param message wiadomość tekstowa otrzymana od serwera
+     */
     private void handleServerMessage(String message) {
         System.out.println("Otrzymano od serwera: " + message);
 
@@ -107,10 +151,16 @@ public class LobbyController {
                 e.printStackTrace();
             }
         } else if (message.startsWith("ERROR")) {
-            showError(message);
+            System.err.println("Błąd od serwera: " + message);
         }
     }
 
+    /**
+     * Aktualizuje listę graczy w lobby na podstawie danych otrzymanych z serwera.
+     * Dane są w formacie "użytkownik1:READY,użytkownik2:NOT_READY"
+     *
+     * @param usersStr łańcuch tekstowy zawierający listę graczy i ich statusy
+     */
     private void updateUserList(String usersStr) {
         Platform.runLater(() -> {
             userList.clear();
@@ -143,6 +193,13 @@ public class LobbyController {
         });
     }
 
+    /**
+     * Aktualizuje status gotowości pojedynczego gracza na liście.
+     * Dodaje lub usuwa symbol ✓ przed nazwą gracza.
+     *
+     * @param user nazwa gracza
+     * @param ready flaga określająca gotowość gracza
+     */
     private void updateUserStatus(String user, boolean ready) {
         Platform.runLater(() -> {
             for (int i = 0; i < userList.size(); i++) {
@@ -163,6 +220,10 @@ public class LobbyController {
         });
     }
 
+    /**
+     * Aktualizuje wygląd przycisku gotowości na podstawie stanu bieżącego gracza.
+     * Zmienia tekst, kolor tła i liczbę gotowych graczy.
+     */
     private void updateReadyButtonState() {
         // Aktualizuj przycisk gotowości na podstawie stanu użytkownika
         if (isReady) {
@@ -182,11 +243,13 @@ public class LobbyController {
                 readyCount++;
             }
         }
-
-        // Możesz dodać logikę, która pokazuje informację o liczbie gotowych graczy
-        // np. instrukcja.setText("Gotowych: " + readyCount + "/" + totalPlayers);
     }
 
+    /**
+     * Obsługuje kliknięcie przycisku gotowości.
+     * W zależności od aktualnego stanu wysyła do serwera komunikat READY lub UNREADY.
+     * Aktualizuje lokalny stan gracza.
+     */
     @FXML
     private void handleReadyButton() {
         if (!isReady) {
@@ -197,7 +260,7 @@ public class LobbyController {
                     // Natychmiastowa aktualizacja lokalna
                     updateUserStatus(nickname, true);
                 } else {
-                    showError("Nie udało się wysłać statusu gotowości");
+                    System.err.println("Nie udało się wysłać statusu gotowości");
                 }
             }
         } else {
@@ -208,12 +271,20 @@ public class LobbyController {
                     // Natychmiastowa aktualizacja lokalna
                     updateUserStatus(nickname, false);
                 } else {
-                    showError("Nie udało się wysłać statusu niegotowości");
+                    System.err.println("Nie udało się wysłać statusu niegotowości");
                 }
             }
         }
     }
 
+    /**
+     * Obsługuje kliknięcie przycisku wyjścia z lobby.
+     * Wysyła do serwera komunikaty UNREADY i EXIT, zamyka połączenie,
+     * przerywa wątek odbiorczy i wraca do menu głównego.
+     *
+     * @param event zdarzenie ActionEvent związane z kliknięciem przycisku
+     * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML menu głównego
+     */
     @FXML
     private void handleExitButton(ActionEvent event) throws IOException {
         running = false;
@@ -233,6 +304,12 @@ public class LobbyController {
         goBackToMainMenu();
     }
 
+    /**
+     * Wraca do menu głównego.
+     * Ładuje plik FXML main_menu.fxml i ustawia go jako aktywną scenę.
+     *
+     * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML
+     */
     private void goBackToMainMenu() throws IOException {
         Stage stage = (Stage) userListView.getScene().getWindow();
         Parent root = FXMLLoader.load(getClass().getResource("/main_menu.fxml"));
@@ -244,6 +321,13 @@ public class LobbyController {
         stage.show();
     }
 
+    /**
+     * Przełącza do sceny gry UNO.
+     * Zatrzymuje wątek odbiorczy, ładuje plik FXML uno_game.fxml,
+     * przekazuje połączenie i nickname do kontrolera gry oraz ustawia nową scenę.
+     *
+     * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML gry
+     */
     private void switch_to_game() throws IOException {
         running = false;
 
@@ -264,15 +348,5 @@ public class LobbyController {
         stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
-    }
-
-    private void showError(String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Błąd");
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
     }
 }

@@ -16,6 +16,12 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
+/**
+ * Kontroler obsługujący widok bazy danych/rankingu graczy.
+ * Odpowiada za pobieranie danych z serwera, wyświetlanie ich w tabeli
+ * oraz zarządzanie połączeniem sieciowym z serwerem rankingu.
+ *
+ */
 public class DbController {
 
     @FXML
@@ -30,6 +36,11 @@ public class DbController {
     private ObservableList<PlayerScore> scoreData = FXCollections.observableArrayList();
     private ClientConnection clientConnection;
 
+    /**
+     * Inicjalizuje kontroler po załadowaniu widoku FXML.
+     * Konfiguruje wiązania kolumn tabeli i rozpoczyna proces ładowania danych.
+     * Automatycznie wywoływany przez JavaFX.
+     */
     @FXML
     public void initialize() {
         playerColumn.setCellValueFactory(new PropertyValueFactory<>("playerName"));
@@ -39,6 +50,11 @@ public class DbController {
         connectAndLoadData();
     }
 
+    /**
+     * Nawiązuje połączenie z serwerem i ładuje dane rankingu.
+     * W przypadku błędu połączenia lub przetwarzania danych,
+     * ładowane są przykładowe dane lokalne.
+     */
     private void connectAndLoadData() {
         try {
             clientConnection = new ClientConnection();
@@ -94,6 +110,12 @@ public class DbController {
         }
     }
 
+    /**
+     * Przetwarza odpowiedź serwera zawierającą dane rankingu.
+     * Parsuje odpowiedź w formacie tekstowym na obiekty PlayerScore.
+     *
+     * @param response Odpowiedź serwera w formacie: "TOP5 1. Jan Kowalski - 15 wygranych/2. ..."
+     */
     private void processServerResponse(String response) {
         scoreData.clear();
 
@@ -161,6 +183,12 @@ public class DbController {
         }
     }
 
+    /**
+     * Wyświetla okno dialogowe z ostrzeżeniem.
+     *
+     * @param title Tytuł okna dialogowego
+     * @param content Treść komunikatu
+     */
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.WARNING);
         alert.setTitle(title);
@@ -169,10 +197,20 @@ public class DbController {
         alert.showAndWait();
     }
 
+    /**
+     * Dodaje nowy wynik gracza do listy danych.
+     *
+     * @param playerName Nazwa gracza
+     * @param wins Liczba wygranych
+     */
     public void addPlayerScore(String playerName, int wins) {
         scoreData.add(new PlayerScore(playerName, wins));
     }
 
+    /**
+     * Ładuje przykładowe dane do tabeli.
+     * Używane w przypadku braku połączenia z serwerem lub błędów w danych.
+     */
     private void loadSampleData() {
         System.out.println("Ładuję przykładowe dane...");
         scoreData.clear();
@@ -184,6 +222,12 @@ public class DbController {
         System.out.println("Przykładowe dane załadowane");
     }
 
+    /**
+     * Przełącza widok na główne menu aplikacji.
+     *
+     * @param event Zdarzenie akcji przycisku
+     * @throws IOException W przypadku błędu ładowania pliku FXML
+     */
     @FXML
     private void switch_to_main_menu(ActionEvent event) throws IOException {
         if (clientConnection != null && clientConnection.isConnected()) {
@@ -204,33 +248,68 @@ public class DbController {
         stage.show();
     }
 
+    /**
+     * Odświeża dane w tabeli poprzez ponowne połączenie z serwerem.
+     *
+     * @param event Zdarzenie akcji przycisku
+     */
     @FXML
     private void refreshData(ActionEvent event) {
         System.out.println("Odświeżam dane...");
         connectAndLoadData();
     }
 
+    /**
+     * Klasa reprezentująca wynik gracza w rankingu.
+     * Przechowuje nazwę gracza i liczbę wygranych.
+     */
     public static class PlayerScore {
         private String playerName;
         private Integer wins;
 
+        /**
+         * Tworzy nowy obiekt wyniku gracza.
+         *
+         * @param playerName Nazwa gracza
+         * @param wins Liczba wygranych
+         */
         public PlayerScore(String playerName, Integer wins) {
             this.playerName = playerName;
             this.wins = wins;
         }
 
+        /**
+         * Zwraca nazwę gracza.
+         *
+         * @return Nazwa gracza
+         */
         public String getPlayerName() {
             return playerName;
         }
 
+        /**
+         * Ustawia nazwę gracza.
+         *
+         * @param playerName Nowa nazwa gracza
+         */
         public void setPlayerName(String playerName) {
             this.playerName = playerName;
         }
 
+        /**
+         * Zwraca liczbę wygranych gracza.
+         *
+         * @return Liczba wygranych
+         */
         public Integer getWins() {
             return wins;
         }
 
+        /**
+         * Ustawia liczbę wygranych gracza.
+         *
+         * @param wins Nowa liczba wygranych
+         */
         public void setWins(Integer wins) {
             this.wins = wins;
         }
