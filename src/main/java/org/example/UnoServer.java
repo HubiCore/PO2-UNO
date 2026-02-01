@@ -17,7 +17,7 @@ public class UnoServer extends Thread {
 
     public void run() {
         db = new DataBase();
-        conn = db.connect("/home/Hubi_Core/IdeaProjects/proba2_backend/src/main/resources/baza.sql");
+        conn = db.connect("src/main/resources/baza.sql");
 
         if (conn == null) {
             System.out.println("Nie udało się połączyć z bazą danych");
