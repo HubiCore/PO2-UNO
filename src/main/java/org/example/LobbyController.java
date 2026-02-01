@@ -114,21 +114,32 @@ public class LobbyController {
     private void updateUserList(String usersStr) {
         Platform.runLater(() -> {
             userList.clear();
+            if (usersStr == null || usersStr.trim().isEmpty()) {
+                return;
+            }
+
             String[] users = usersStr.split(",");
-            for (String user : users) {
-                if (!user.isEmpty()) {
-                    userList.add(user);
+            for (String userEntry : users) {
+                if (!userEntry.isEmpty()) {
+                    // Format: "username:READY" lub "username:NOT_READY"
+                    String[] parts = userEntry.split(":");
+                    if (parts.length == 2) {
+                        String username = parts[0].trim();
+                        String status = parts[1].trim();
+
+                        if (status.equals("READY")) {
+                            userList.add("✓ " + username);
+                        } else {
+                            userList.add(username);
+                        }
+                    } else {
+                        // Dla kompatybilności z poprzednimi wersjami
+                        userList.add(userEntry);
+                    }
                 }
             }
 
-            int playerCount = userList.size();
-            if (playerCount >= 4) {
-                readyButton.setDisable(true);
-            } else if (playerCount >= 2) {
-                readyButton.setDisable(false);
-            } else {
-                readyButton.setDisable(true);
-            }
+            updateReadyButtonState();
         });
     }
 
@@ -136,41 +147,70 @@ public class LobbyController {
         Platform.runLater(() -> {
             for (int i = 0; i < userList.size(); i++) {
                 String listUser = userList.get(i);
-                // Usuń ewentualny znacznik ✓
-                String baseUser = listUser.replace("✓ ", "");
+                String baseUser = listUser.replace("✓ ", "").trim();
+
                 if (baseUser.equals(user)) {
-                    String newStatus = ready ? "✓ " + user : user;
-                    userList.set(i, newStatus);
+                    if (ready) {
+                        userList.set(i, "✓ " + user);
+                    } else {
+                        userList.set(i, user);
+                    }
                     break;
                 }
             }
+
+            updateReadyButtonState();
         });
+    }
+
+    private void updateReadyButtonState() {
+        // Aktualizuj przycisk gotowości na podstawie stanu użytkownika
+        if (isReady) {
+            readyButton.setText("Gotowość ✓");
+            readyButton.setStyle("-fx-background-color: green; -fx-text-fill: white;");
+        } else {
+            readyButton.setText("Gotowy?");
+            readyButton.setStyle("");
+        }
+
+        // Sprawdź czy można rozpocząć grę (co najmniej 2 graczy gotowych)
+        int readyCount = 0;
+        int totalPlayers = userList.size();
+
+        for (String user : userList) {
+            if (user.startsWith("✓ ")) {
+                readyCount++;
+            }
+        }
+
+        // Możesz dodać logikę, która pokazuje informację o liczbie gotowych graczy
+        // np. instrukcja.setText("Gotowych: " + readyCount + "/" + totalPlayers);
     }
 
     @FXML
     private void handleReadyButton() {
         if (!isReady) {
-            if (clientConnection != null) {
+            if (clientConnection != null && clientConnection.isConnected()) {
                 boolean sent = clientConnection.sendMessage("READY " + nickname);
-                if (!sent) {
+                if (sent) {
+                    isReady = true;
+                    // Natychmiastowa aktualizacja lokalna
+                    updateUserStatus(nickname, true);
+                } else {
                     showError("Nie udało się wysłać statusu gotowości");
-                    return;
                 }
             }
-            readyButton.setText("Gotowość ✓");
-            readyButton.setStyle("-fx-background-color: green; -fx-text-fill: white;");
-            isReady = true;
         } else {
-            if (clientConnection != null) {
+            if (clientConnection != null && clientConnection.isConnected()) {
                 boolean sent = clientConnection.sendMessage("UNREADY " + nickname);
-                if (!sent) {
+                if (sent) {
+                    isReady = false;
+                    // Natychmiastowa aktualizacja lokalna
+                    updateUserStatus(nickname, false);
+                } else {
                     showError("Nie udało się wysłać statusu niegotowości");
-                    return;
                 }
             }
-            readyButton.setText("Gotowy?");
-            readyButton.setStyle("");
-            isReady = false;
         }
     }
 
@@ -179,6 +219,9 @@ public class LobbyController {
         running = false;
 
         if (clientConnection != null) {
+            if (isReady) {
+                clientConnection.sendMessage("UNREADY " + nickname);
+            }
             clientConnection.sendMessage("EXIT " + nickname);
             clientConnection.disconnect();
         }
