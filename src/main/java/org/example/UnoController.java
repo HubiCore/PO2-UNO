@@ -573,8 +573,8 @@ public class UnoController implements Initializable {
                                     // Zamknij alert jeśli jeszcze jest otwarty
                                     alert.close();
 
-                                    // Załaduj menu główne
-                                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/example/main_menu.fxml"));
+                                    // Załaduj menu główne z zasobów
+                                    FXMLLoader loader = new FXMLLoader(getClass().getResource("/main_menu.fxml"));
                                     Parent root = loader.load();
 
                                     // Pobierz aktualne okno
@@ -582,8 +582,9 @@ public class UnoController implements Initializable {
 
                                     // Ustaw nową scenę
                                     Scene scene = new Scene(root);
+                                    scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
                                     stage.setScene(scene);
-                                    stage.setTitle("UNO - Menu Główne");
+                                    stage.setFullScreen(true);
                                     stage.show();
 
                                     // Zamknij połączenie z serwerem
@@ -594,6 +595,8 @@ public class UnoController implements Initializable {
                                 } catch (Exception e) {
                                     System.err.println("Błąd podczas przełączania do menu: " + e.getMessage());
                                     e.printStackTrace();
+                                    // W razie błędu spróbuj bezpośrednio zamknąć okno
+                                    Platform.exit();
                                 }
                             });
                         }
