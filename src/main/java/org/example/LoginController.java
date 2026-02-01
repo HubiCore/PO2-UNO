@@ -120,7 +120,7 @@ public class LoginController {
 
         // Odbieraj wiadomości w pętli aż do otrzymania LOGIN_SUCCESS
         long startTime = System.currentTimeMillis();
-        long timeout = 10000;
+        long timeout = 100000;
         boolean loginProcessed = false;
 
         while (!loginProcessed && (System.currentTimeMillis() - startTime) < timeout) {

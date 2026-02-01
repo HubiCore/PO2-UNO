@@ -7,12 +7,18 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.Region;
+import java.util.Random;
 
 public class Card {
     private String color;
     private String value;
     private StackPane view;
     private StackPane backView;
+
+    // Tablice kolorów i wartości zgodne z Cart.java
+    private static final String[] COLORS = {"RED", "GREEN", "BLUE", "YELLOW"};
+    private static final String[] VALUES = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+            "+2", "⏸", "↺"};
 
     public Card(String color, String value) {
         this.color = color;
@@ -27,6 +33,13 @@ public class Card {
             throw new IllegalArgumentException("Nieprawidłowy format karty: " + cardStr);
         }
         return new Card(parts[0], parts[1]);
+    }
+
+    public static Card generateRandomCard() {
+        Random random = new Random();
+        String color = COLORS[random.nextInt(COLORS.length)];
+        String value = VALUES[random.nextInt(VALUES.length)];
+        return new Card(color, value);
     }
 
     @Override
