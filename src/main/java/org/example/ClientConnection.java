@@ -35,7 +35,7 @@ public class ClientConnection implements AutoCloseable {
             log("Próbuję połączyć się z " + host + ":" + port);
             socket = new Socket();
             socket.connect(new InetSocketAddress(host, port), 5000); // Timeout połączenia 5 sekund
-            socket.setSoTimeout(10000); // Timeout odczytu 10 sekund
+            socket.setSoTimeout(300000); // Timeout odczytu 10 sekund
 
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             writer = new PrintWriter(socket.getOutputStream(), true);
