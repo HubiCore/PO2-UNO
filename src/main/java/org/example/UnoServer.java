@@ -97,7 +97,6 @@ public class UnoServer extends Thread {
 
         private void initDeck() {
             String[] colors = {"RED", "GREEN", "BLUE", "YELLOW"};
-            // Zmieniamy wartości na skrócone
             String[] values = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
                     "+2", "⏸", "↺"};
 
@@ -111,11 +110,6 @@ public class UnoServer extends Thread {
                 }
             }
 
-
-            for (int i = 0; i < 4; i++) {
-                deck.add(new Cart("WILD", "W"));
-                deck.add(new Cart("WILD", "W4"));
-            }
         }
 
         private void shuffleDeck() {
@@ -241,21 +235,6 @@ public class UnoServer extends Thread {
                         }
                     }
                     nextPlayer();
-                    break;
-                case "W4":
-                    nextPlayer();
-                    String nextPlayerWild = getCurrentPlayer();
-                    for (int i = 0; i < 4; i++) {
-                        Cart drawnCard = drawFromDeck();
-                        if (drawnCard != null) {
-                            hands.get(nextPlayerWild).add(drawnCard);
-                        }
-                    }
-                    nextPlayer();
-                    waitingForWildColor = true;
-                    break;
-                case "W":
-                    waitingForWildColor = true;
                     break;
             }
         }
