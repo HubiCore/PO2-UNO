@@ -1,4 +1,5 @@
 package org.example;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -292,30 +293,70 @@ public class UnoServer extends Thread {
         }
 
         private void handleInput(String inputLine) {
-            if (inputLine.startsWith("JOIN ")) {
-                handleJoin(inputLine.substring(5));
+            if (inputLine.startsWith("LOGIN ")) {
+                handleLogin(inputLine.substring(6));
             } else if (inputLine.startsWith("READY ")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 handleReady(inputLine.substring(6));
             } else if (inputLine.startsWith("UNREADY ")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 handleUnready(inputLine.substring(8));
             } else if (inputLine.startsWith("EXIT ")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 handleExit(inputLine.substring(5));
             } else if (inputLine.startsWith("INIT_GAME ")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 System.out.println("Otrzymano inicjalizację gry");
                 initialize_game();
-            }else if ("TOP5".equalsIgnoreCase(inputLine)) {
+            } else if ("TOP5".equalsIgnoreCase(inputLine)) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 String top5 = db.Top5_Best(conn);
                 System.out.println(top5);
                 out.println("TOP5 " + top5);
             } else if ("LIST".equalsIgnoreCase(inputLine)) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 broadcastUserList();
             } else if (inputLine.startsWith("PLAY ")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 handlePlay(inputLine.substring(5));
             } else if (inputLine.equals("DRAW")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 handleDraw();
             } else if (inputLine.startsWith("WILD_COLOR ")) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 handleWildColor(inputLine.substring(11));
             } else if ("GET_GAME_STATE".equals(inputLine)) {
+                if (nickname == null) {
+                    out.println("ERROR_NOT_LOGGED_IN");
+                    return;
+                }
                 sendGameState();
             } else if ("quit".equalsIgnoreCase(inputLine)) {
                 out.println("Bye bye!");
@@ -324,67 +365,140 @@ public class UnoServer extends Thread {
             }
         }
 
-        private void handleJoin(String nick) {
-            if (connectedClients.containsKey(nick)) {
-                out.println("ERROR_TAKEN");
+        private void handleLogin(String loginData) {
+            System.out.println("=== SERWER: ROZPOCZĘCIE LOGOWANIA ===");
+            String[] parts = loginData.split(":");
+            if (parts.length != 2) {
+                System.out.println("Serwer: Nieprawidłowy format logowania: " + loginData);
+                out.println("LOGIN_ERROR Invalid format. Use: LOGIN username:password_hash");
                 return;
             }
+
+            String username = parts[0];
+            String passwordHash = parts[1];
+
+            System.out.println("Serwer: Próba logowania dla użytkownika: " + username);
+
+            if (connectedClients.containsKey(username)) {
+                System.out.println("Serwer: Użytkownik już połączony: " + username);
+                out.println("LOGIN_ERROR User already connected");
+                return;
+            }
+
             if (gameInProgress) {
-                out.println("ERROR_GAME_IN_PROGRESS");
+                System.out.println("Serwer: Gra w trakcie, odmowa logowania");
+                out.println("LOGIN_ERROR Game in progress");
                 return;
             }
-            db.Insert_User(conn, nick);
-            this.nickname = nick;
-            connectedClients.put(nick, this);
-            clientStatus.put(nick, "NOT_READY");
+
+            boolean userExists = db.is_player(conn, username);
+            System.out.println("Serwer: Użytkownik istnieje w bazie: " + userExists);
+
+            if (!userExists) {
+                System.out.println("Serwer: Tworzenie nowego użytkownika: " + username);
+                boolean created = db.createUserIfNotExists(conn, username, passwordHash);
+                if (!created) {
+                    System.out.println("Serwer: Nie udało się utworzyć użytkownika");
+                    out.println("LOGIN_ERROR Failed to create user");
+                    return;
+                }
+                System.out.println("Serwer: Utworzono nowego użytkownika: " + username);
+                loginUser(username);
+                return;
+            }
+
+            String storedPasswordHash = db.getPasswordHash(conn, username);
+
+            if (storedPasswordHash == null) {
+                System.out.println("Serwer: Nie znaleziono użytkownika w bazie");
+                out.println("LOGIN_ERROR User not found in database");
+                return;
+            }
+
+            if (!storedPasswordHash.equals(passwordHash)) {
+                System.out.println("Serwer: Błędne hasło dla użytkownika: " + username);
+                out.println("LOGIN_ERROR Invalid password");
+                return;
+            }
+
+            System.out.println("Serwer: Hasło poprawne, logowanie użytkownika: " + username);
+            loginUser(username);
+        }
+
+        private void loginUser(String username) {
+            System.out.println("Serwer: Logowanie użytkownika: " + username);
+            this.nickname = username;
+            connectedClients.put(username, this);
+            clientStatus.put(username, "NOT_READY");
+
+            System.out.println("Serwer: Wysyłam LOGIN_SUCCESS do: " + username);
+            out.println("LOGIN_SUCCESS " + username);
+
+            // WAŻNE: Czekamy chwilę przed wysłaniem broadcastu
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
             broadcastUserList();
-            broadcastMessage("USER_JOINED " + nick);
-            out.println("JOIN_SUCCESS " + nick);
+            broadcastMessage("USER_JOINED " + username);
+
+            System.out.println("Serwer: Login zakończony pomyślnie dla: " + username);
         }
 
         private void handleReady(String nick) {
+            if (!nick.equals(nickname)) {
+                out.println("ERROR Invalid nickname");
+                return;
+            }
+
             if (gameInProgress) {
                 out.println("ERROR_GAME_IN_PROGRESS");
                 return;
             }
-            if (nick.equals(nickname)) {
-                clientStatus.put(nick, "READY");
-                broadcastMessage("READY " + nick);
 
-                boolean allReady = true;
-                int readyCount = 0;
-                for (String status : clientStatus.values()) {
-                    if ("READY".equals(status)) {
-                        readyCount++;
-                    } else {
-                        allReady = false;
-                    }
-                }
+            clientStatus.put(nick, "READY");
+            broadcastMessage("READY " + nick);
 
-                if (allReady && readyCount >= 2 && readyCount <= 4) {
-                    broadcastMessage("START_GAME");
+            boolean allReady = true;
+            int readyCount = 0;
+            for (String status : clientStatus.values()) {
+                if ("READY".equals(status)) {
+                    readyCount++;
+                } else {
+                    allReady = false;
                 }
+            }
+
+            if (allReady && readyCount >= 2 && readyCount <= 4) {
+                broadcastMessage("START_GAME");
             }
         }
 
         private void handleUnready(String nick) {
-            if (nick.equals(nickname)) {
-                clientStatus.put(nick, "NOT_READY");
-                broadcastMessage("UNREADY " + nick);
+            if (!nick.equals(nickname)) {
+                out.println("ERROR Invalid nickname");
+                return;
             }
+
+            clientStatus.put(nick, "NOT_READY");
+            broadcastMessage("UNREADY " + nick);
         }
 
         private void handleExit(String nick) {
-            if (nick.equals(nickname)) {
-                connectedClients.remove(nick);
-                clientStatus.remove(nick);
-                broadcastUserList();
-                broadcastMessage("USER_LEFT " + nick);
+            if (!nick.equals(nickname)) {
+                out.println("ERROR Invalid nickname");
+                return;
             }
+
+            connectedClients.remove(nick);
+            clientStatus.remove(nick);
+            broadcastUserList();
+            broadcastMessage("USER_LEFT " + nick);
         }
 
         private void initialize_game() {
-
             List<String> players = new ArrayList<>(connectedClients.keySet());
             currentGame = new Game(players);
             for (String player : players) {
