@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.layout.*;
 import javafx.scene.control.Label;
@@ -24,7 +25,7 @@ public class UnoController implements Initializable {
     @FXML private Label labelLewy;
     @FXML private Label labelPrawy;
     @FXML private Label labelTura;
-
+    @FXML private Button przyciskDobierania;
     private Card wierzchniaKarta;
     private List<Card> kartyGracza;
     private Map<String, Integer> przeciwnicyKarty;
@@ -45,6 +46,11 @@ public class UnoController implements Initializable {
         System.out.println("Kontroler zainicjalizowany");
 
         Platform.runLater(() -> {
+            if (przyciskDobierania != null) {
+                przyciskDobierania.setOnAction(e -> dobierzKarte());
+                przyciskDobierania.setDisable(true);  // Początkowo wyłączony
+                przyciskDobierania.setStyle("-fx-opacity: 0.5;");
+            }
             uiReady = true;
             System.out.println("UI gotowe! Przetwarzam oczekujące wiadomości: " + pendingMessages.size());
 
@@ -74,23 +80,31 @@ public class UnoController implements Initializable {
                         if (message != null && !message.trim().isEmpty()) {
                             System.out.println("Odebrano w wątku sieciowym: [" + message + "]");
 
-                            String[] messages = message.split("\n");
-                            for (String msg : messages) {
-                                msg = msg.trim();
-                                if (!msg.isEmpty()) {
-                                    System.out.println("Dodaję do kolejki: " + msg);
-                                    pendingMessages.offer(msg);
+                            // Rozdziel po znakach nowej linii ORAZ po średnikach
+                            String[] lines = message.split("\n");
+                            for (String line : lines) {
+                                if (!line.trim().isEmpty()) {
+                                    // Teraz rozdziel po średnikach
+                                    String[] parts = line.split(";");
+                                    for (String part : parts) {
+                                        String trimmedPart = part.trim();
+                                        if (!trimmedPart.isEmpty()) {
+                                            System.out.println("Dodaję do kolejki: " + trimmedPart);
+                                            pendingMessages.offer(trimmedPart);
+                                        }
+                                    }
                                 }
                             }
+
                             if (uiReady) {
                                 Platform.runLater(() -> processPendingMessages());
                             }
-                        } else if (message == null) {
-                            System.out.println("Odebrano null, rozłączono");
-                            break;
                         }
+                        // Krótka pauza, aby nie obciążać CPU
+                        Thread.sleep(50);
                     } catch (Exception e) {
                         System.err.println("Błąd w odbiorze wiadomości: " + e.getMessage());
+                        e.printStackTrace();
                     }
                 }
             } catch (Exception e) {
@@ -101,19 +115,15 @@ public class UnoController implements Initializable {
         messageReceiver.setDaemon(true);
         messageReceiver.start();
     }
-    private void removeCardFromHand(Card card) {
+    private void removeCardFromHand(String cardStr) {
         Platform.runLater(() -> {
-            // Znajdź i usuń kartę z ręki
             for (int i = 0; i < kartyGracza.size(); i++) {
-                if (kartyGracza.get(i).getColor().equals(card.getColor()) &&
-                        kartyGracza.get(i).getValue().equals(card.getValue())) {
+                Card card = kartyGracza.get(i);
+                if (card.toString().equals(cardStr)) {
                     kartyGracza.remove(i);
-
-                    // Usuń wizualną reprezentację
                     if (i < rekaGracza.getChildren().size()) {
                         rekaGracza.getChildren().remove(i);
                     }
-
                     labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
                     break;
                 }
@@ -136,11 +146,16 @@ public class UnoController implements Initializable {
     private void handleServerMessage(String message) {
         System.out.println("=== ROZPOCZĘCIE handleServerMessage ===");
         System.out.println("Oryginalna wiadomość: [" + message + "]");
+
         String trimmed = message.trim();
-        System.out.println("Po przycięciu: [" + trimmed + "]");
+        System.out.println("Przetwarzam komendę: [" + trimmed + "]");
+
         if (trimmed.startsWith("INIT_GAME ")) {
-            System.out.println("Otrzymano inicjalizację gry");
             handleGameInitialization(trimmed.substring(10));
+        }
+        else if (trimmed.startsWith("PLAY_RESULT ")) {
+            System.out.println("Otrzymano wynik zagrania karty");
+            handlePlayResult(trimmed.substring(12));
         }
         else if (trimmed.startsWith("HAND ")) {
             String handData = trimmed.substring(5);
@@ -181,10 +196,47 @@ public class UnoController implements Initializable {
             gameEnded();
         }
         else {
-            System.out.println("Nieznana wiadomość: " + trimmed);
+            System.out.println("Nieznana komenda: " + trimmed);
         }
 
         System.out.println("=== ZAKOŃCZENIE handleServerMessage ===\n");
+    }
+    private void handlePlayResult(String playResultData) {
+        System.out.println("Przetwarzanie PLAY_RESULT: " + playResultData);
+
+        String[] parts = playResultData.split(" ", 6);
+        if (parts.length != 6) {
+            System.err.println("Błędny format PLAY_RESULT: " + playResultData);
+            return;
+        }
+
+        String playerWhoPlayed = parts[0];
+        String cardPlayed = parts[1];
+        String topCard = parts[2];
+        String currentPlayer = parts[3];
+        String opponents = parts[4];
+        String hand = parts[5];  // To jest MOJA ręka, a nie ręka gracza który zagrał!
+
+        Platform.runLater(() -> {
+            // Aktualizuj wierzchnią kartę
+            updateTopCard(topCard);
+
+            // Aktualizuj turę
+            updateTurn(currentPlayer);
+
+            // Aktualizuj przeciwników
+            updateOpponents(opponents);
+
+            // ZAWSZE aktualizuj rękę (bo to MOJA ręka)
+            updateHand(hand);
+
+            // Wyświetl komunikat
+            if (playerWhoPlayed.equals(nickname)) {
+                instrukcja.setText("Twoja karta została zagrana");
+            } else {
+                instrukcja.setText("Gracz " + playerWhoPlayed + " zagrał kartę");
+            }
+        });
     }
 
     private void handleGameInitialization(String initData) {
@@ -287,29 +339,102 @@ public class UnoController implements Initializable {
     }
 
     private void updateOpponentDisplays() {
+        Platform.runLater(() -> {
+            List<String> opponents = new ArrayList<>(przeciwnicyKarty.keySet());
 
+            if (opponents.size() >= 3) {
+                labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
+                labelLewy.setText(opponents.get(1) + " (" + przeciwnicyKarty.get(opponents.get(1)) + ")");
+                labelPrawy.setText(opponents.get(2) + " (" + przeciwnicyKarty.get(opponents.get(2)) + ")");
+
+                updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
+                updateHandDisplay(rekaLewego, przeciwnicyKarty.get(opponents.get(1)));
+                updateHandDisplay(rekaPrawego, przeciwnicyKarty.get(opponents.get(2)));
+            } else if (opponents.size() == 2) {
+                labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
+                labelLewy.setText(opponents.get(1) + " (" + przeciwnicyKarty.get(opponents.get(1)) + ")");
+                labelPrawy.setText("");
+
+                updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
+                updateHandDisplay(rekaLewego, przeciwnicyKarty.get(opponents.get(1)));
+                rekaPrawego.getChildren().clear();
+            } else if (opponents.size() == 1) {
+                labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
+                labelLewy.setText("");
+                labelPrawy.setText("");
+
+                updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
+                rekaLewego.getChildren().clear();
+                rekaPrawego.getChildren().clear();
+            }
+        });
     }
+    private void updateHandDisplay(HBox handBox, int cardCount) {
+        handBox.getChildren().clear();
+        for (int i = 0; i < cardCount; i++) {
+            Card dummyCard = new Card("RED", "0");
+            handBox.getChildren().add(dummyCard.getBackView());
+        }
+    }
+    @FXML
+    private void dobierzKarte() {
+        if (myTurn && !waitingForColorChoice && clientConnection != null && clientConnection.isConnected()) {
+            System.out.println("Dobieranie karty...");
 
+            // Wyłącz przycisk na chwilę, aby uniknąć wielokrotnych kliknięć
+            if (przyciskDobierania != null) {
+                przyciskDobierania.setDisable(true);
+            }
+
+            // Wyślij komendę do serwera
+            clientConnection.sendMessage("DRAW");
+            instrukcja.setText("Dobieranie karty...");
+
+            // Po krótkim czasie przywróć stan przycisku (jeśli nadal jest tura)
+            new java.util.Timer().schedule(
+                    new java.util.TimerTask() {
+                        @Override
+                        public void run() {
+                            Platform.runLater(() -> {
+                                if (myTurn && przyciskDobierania != null) {
+                                    przyciskDobierania.setDisable(false);
+                                }
+                            });
+                        }
+                    },
+                    1000  // 1 sekunda
+            );
+        }
+    }
     private void updateTurn(String player) {
+        System.out.println("updateTurn wywołane dla gracza: " + player + " (ja: " + nickname + ")");
+
         Platform.runLater(() -> {
             currentPlayer = player;
             myTurn = player.equals(nickname);
+            System.out.println("Czy moja tura? " + myTurn);
 
             if (myTurn) {
                 labelTura.setText("Twoja tura!");
                 instrukcja.setText("Wybierz kartę do zagrania lub kliknij talię, aby dobrać kartę");
-                //Odblokowywanie kart
+
+                if (przyciskDobierania != null) {
+                    przyciskDobierania.setDisable(false);
+                    przyciskDobierania.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
+                }
+                // Odblokuj karty
                 for (var child : rekaGracza.getChildren()) {
                     child.setDisable(false);
-                    child.setStyle("-fx-cursor: hand;");
+                    child.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
                 }
             } else {
                 labelTura.setText("Tura gracza: " + player);
                 instrukcja.setText("Oczekiwanie na ruch gracza " + player);
-                //Blokowanie kart
+
+                // Zablokuj karty
                 for (var child : rekaGracza.getChildren()) {
                     child.setDisable(true);
-                    child.setStyle("-fx-cursor: default;");
+                    child.setStyle("-fx-opacity: 0.7; -fx-cursor: default;");
                 }
             }
         });
@@ -317,44 +442,71 @@ public class UnoController implements Initializable {
 
     private void handleCardPlayed(String playInfo) {
         System.out.println("Otrzymano PLAYED: " + playInfo);
+
+        // Usuń ewentualne dodatkowe białe znaki
+        playInfo = playInfo.trim();
+
         String[] parts = playInfo.split(" ");
-        if (parts.length == 2) {
+        if (parts.length >= 2) {
             String player = parts[0];
             String cardStr = parts[1];
 
             if (player.equals(nickname)) {
-                try {
-                    Card playedCard = Card.fromString(cardStr);
-                    Platform.runLater(() -> {
-                        for (int i = 0; i < kartyGracza.size(); i++) {
-                            Card c = kartyGracza.get(i);
-                            if (c.getColor().equals(playedCard.getColor()) &&
-                                    c.getValue().equals(playedCard.getValue())) {
-                                kartyGracza.remove(i);
-
-                                if (i < rekaGracza.getChildren().size()) {
-                                    rekaGracza.getChildren().remove(i);
-                                }
-                                labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
-                                break;
-                            }
-                        }
-                    });
-                } catch (Exception e) {
-                    System.err.println("Błąd przetwarzania zagranej karty: " + e.getMessage());
-                }
-            }
-
-            if (!player.equals(nickname)) {
+                // Usuń kartę z ręki klienta
                 Platform.runLater(() -> {
-                    instrukcja.setText("Gracz " + player + " zagrał kartę");
+                    for (int i = kartyGracza.size() - 1; i >= 0; i--) {
+                        Card c = kartyGracza.get(i);
+                        if (c.toString().equals(cardStr)) {
+                            kartyGracza.remove(i);
+                            if (i < rekaGracza.getChildren().size()) {
+                                rekaGracza.getChildren().remove(i);
+                            }
+                            labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+                            break;
+                        }
+                    }
                 });
             }
+
+            // Aktualizuj komunikat
+            Platform.runLater(() -> {
+                if (!player.equals(nickname)) {
+                    instrukcja.setText("Gracz " + player + " zagrał kartę");
+                } else {
+                    instrukcja.setText("Twoja karta została zagrana");
+                }
+            });
         }
     }
 
     private void handleCardDrawn(String cardStr) {
-        instrukcja.setText("Dobrałeś kartę");
+        Platform.runLater(() -> {
+            instrukcja.setText("Dobrałeś kartę: " + cardStr);
+
+            try {
+                // Dodaj nową kartę do ręki gracza
+                Card newCard = Card.fromString(cardStr);
+                kartyGracza.add(newCard);
+
+                // Dodaj widok karty do ręki
+                StackPane kartaView = newCard.getView();
+                kartaView.setDisable(!myTurn || waitingForColorChoice);
+                kartaView.setStyle("-fx-cursor: " + (myTurn && !waitingForColorChoice ? "hand" : "default") + ";");
+
+                if (myTurn && !waitingForColorChoice) {
+                    kartaView.setOnMouseClicked(e -> playCard(newCard));
+                }
+
+                rekaGracza.getChildren().add(kartaView);
+                labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+
+                // Aktualizuj widok przeciwników (ich liczba kart się nie zmieniła, ale może być potrzebne odświeżenie)
+                updateOpponentDisplays();
+
+            } catch (Exception e) {
+                System.err.println("Błąd podczas dodawania dobranej karty: " + e.getMessage());
+            }
+        });
     }
 
     private void handleWinner(String winner) {
@@ -434,12 +586,9 @@ public class UnoController implements Initializable {
             clientConnection.sendMessage("PLAY " + cardStr);
             System.out.println("Wysłano kartę do serwera: " + cardStr);
 
-            myTurn = false;
-            for (var child : rekaGracza.getChildren()) {
-                child.setDisable(true);
-            }
-
-            instrukcja.setText("Czekam na odpowiedź serwera...");
+            // Tymczasowe usunięcie karty z ręki (do czasu otrzymania potwierdzenia od serwera)
+            removeCardFromHand(cardStr);
+            instrukcja.setText("Wysyłanie karty...");
         }
     }
     //Debugging
