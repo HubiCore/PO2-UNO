@@ -41,16 +41,18 @@ public class DbController {
     private void connectAndLoadData() {
         clientConnection = new ClientConnection();
         if (clientConnection.connect()) {
-            try {
-                clientConnection.sendMessage("TOP5");
+            // Usunięto blok try-catch z IOException, bo metody nie rzucają tego wyjątku
+            boolean sent = clientConnection.sendMessage("TOP5");
+            if (sent) {
                 String response = clientConnection.receiveMessage();
                 if (response != null && !response.isEmpty()) {
                     processServerResponse(response);
                 } else {
+                    System.err.println("Serwer nie odpowiedział lub odpowiedź jest pusta");
                     loadSampleData();
                 }
-            } catch (IOException e) {
-                System.err.println("Błąd podczas komunikacji z serwerem: " + e.getMessage());
+            } else {
+                System.err.println("Nie udało się wysłać wiadomości do serwera");
                 loadSampleData();
             }
         } else {
@@ -93,6 +95,7 @@ public class DbController {
             }
         }
     }
+
     public void addPlayerScore(String playerName, int wins) {
         scoreData.add(new PlayerScore(playerName, wins));
     }

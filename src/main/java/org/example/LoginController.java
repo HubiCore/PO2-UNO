@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
@@ -26,45 +27,32 @@ public class LoginController {
     private String savedLoginText;
     private String savedPassword;
     private ClientConnection clientConnection;
-    private AuthenticationService authService; // Dodajemy referencję do AuthenticationService
+    private AuthenticationService authService;
 
     @FXML
     public void initialize() {
-        // Inicjalizujemy AuthenticationService
         authService = new AuthenticationService();
 
-        // Max 20 znaków dla loginu - tylko litery
         UnaryOperator<TextFormatter.Change> loginFilter = change -> {
             String newText = change.getControlNewText();
-
-            // Sprawdź długość
-            if (newText.length() > 20) {
-                return null;
-            }
-
-            // Sprawdź czy tylko litery (włącznie z polskimi znakami)
-            if (!newText.matches("[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]*")) {
-                return null;
-            }
-
+            if (newText.length() > 20) return null;
+            if (!newText.matches("[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]*")) return null;
             return change;
         };
         loginTextField.setTextFormatter(new TextFormatter<>(loginFilter));
 
-        // Max 30 znaków dla hasła
         UnaryOperator<TextFormatter.Change> passwordFilter = change -> {
             String newText = change.getControlNewText();
-
-            if (newText.length() > 30) {
-                return null;
-            }
-
+            if (newText.length() > 30) return null;
             return change;
         };
         passwordField.setTextFormatter(new TextFormatter<>(passwordFilter));
 
-        // Ukryj etykietę błędu na starcie
         errorLabel.setVisible(false);
+
+        // Debug: Automatyczne wypełnienie pól dla testów
+        // loginTextField.setText("test");
+        // passwordField.setText("test123");
     }
 
     @FXML
@@ -72,22 +60,21 @@ public class LoginController {
         savedLoginText = loginTextField.getText().trim();
         savedPassword = passwordField.getText();
 
-        // Resetuj błędy
         errorLabel.setVisible(false);
 
-        // Walidacja loginu
+        System.out.println("=== ROZPOCZĘCIE LOGOWANIA ===");
+        System.out.println("Login: " + savedLoginText);
+
         if (savedLoginText.isEmpty()) {
             showError("Wprowadź nick!");
             return;
         }
 
-        // Sprawdź czy login zawiera tylko litery
         if (!savedLoginText.matches("[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+")) {
-            showError("Login może zawierać tylko litery (bez cyfr i znaków specjalnych)!");
+            showError("Login może zawierać tylko litery!");
             return;
         }
 
-        // Walidacja hasła
         if (savedPassword.isEmpty()) {
             showError("Wprowadź hasło!");
             return;
@@ -98,72 +85,123 @@ public class LoginController {
             return;
         }
 
-        System.out.println("Zapisany login: " + savedLoginText);
-
-        // Użyj metody hashowania z AuthenticationService
-        // UWAGA: AuthenticationService musi mieć publiczną metodę do hashowania
-        // Jeśli nie ma, zobacz niżej jak ją dodać
-
         String hashedPassword = hashPasswordUsingAuthService(savedPassword);
         System.out.println("Hash hasła: " + hashedPassword);
 
-        // Utwórz połączenie z serwerem
+        if (clientConnection != null && clientConnection.isConnected()) {
+            System.out.println("Zamykam istniejące połączenie...");
+            clientConnection.disconnect();
+        }
+
         clientConnection = new ClientConnection();
+        System.out.println("Łączę z serwerem (localhost:2137)...");
+
         boolean connected = clientConnection.connect();
+        System.out.println("Status połączenia: " + connected);
 
-        if (connected) {
-            // Wysyłamy dane logowania z zahaszowanym hasłem
-            String loginData = "LOGIN " + savedLoginText + ":" + hashedPassword;
-            clientConnection.sendMessage(loginData);
-
-            // Tutaj możesz dodać oczekiwanie na odpowiedź od serwera
-            // Na razie przechodzimy od razu do lobby
-            switch_to_lobby(event);
-        } else {
+        if (!connected) {
             showError("Nie udało się połączyć z serwerem");
+            clientConnection = null;
+            return;
+        }
+
+        String loginData = "LOGIN " + savedLoginText + ":" + hashedPassword;
+        System.out.println("Wysyłam do serwera: " + loginData);
+
+        boolean sent = clientConnection.sendMessage(loginData);
+        System.out.println("Status wysyłania: " + sent);
+
+        if (!sent) {
+            showError("Nie udało się wysłać danych logowania");
+            clientConnection.disconnect();
+            clientConnection = null;
+            return;
+        }
+
+        // Odbieraj wiadomości w pętli aż do otrzymania LOGIN_SUCCESS
+        long startTime = System.currentTimeMillis();
+        long timeout = 10000;
+        boolean loginProcessed = false;
+
+        while (!loginProcessed && (System.currentTimeMillis() - startTime) < timeout) {
+            String serverResponse = clientConnection.receiveMessageWithTimeout(1000);
+
+            if (serverResponse == null) {
+                continue; // Kontynuuj oczekiwanie
+            }
+
+            System.out.println("Otrzymana odpowiedź: " + serverResponse);
+
+            if (serverResponse.startsWith("LOGIN_SUCCESS")) {
+                System.out.println("Logowanie pomyślne!");
+                loginProcessed = true;
+                // Przechodzimy do lobby
+                Platform.runLater(() -> {
+                    try {
+                        switch_to_lobby(event);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        showError("Błąd przejścia do lobby: " + e.getMessage());
+                    }
+                });
+                break;
+            } else if (serverResponse.startsWith("LOGIN_ERROR")) {
+                String errorMessage = serverResponse.substring(11);
+                showError("Błąd logowania: " + errorMessage);
+                clientConnection.disconnect();
+                clientConnection = null;
+                loginProcessed = true;
+                break;
+            } else {
+                // Ignoruj inne wiadomości (USERLIST, USER_JOINED itp.)
+                System.out.println("Ignoruję wiadomość podczas logowania: " + serverResponse);
+                continue;
+            }
+        }
+
+        if (!loginProcessed) {
+            showError("Brak odpowiedzi od serwera (timeout)");
+            if (clientConnection != null) {
+                clientConnection.disconnect();
+                clientConnection = null;
+            }
         }
     }
 
-    // Metoda wykorzystująca AuthenticationService do hashowania
     private String hashPasswordUsingAuthService(String password) {
-        // Opcja 1: Jeśli AuthenticationService ma publiczną metodę hashPassword()
         try {
-            // Pobierz hash metodą refleksji (jeśli metoda jest prywatna)
             java.lang.reflect.Method method = AuthenticationService.class.getDeclaredMethod("hashPassword", String.class);
             method.setAccessible(true);
             return (String) method.invoke(authService, password);
         } catch (Exception e) {
-            // Jeśli nie ma takiej metody, musimy ją dodać do AuthenticationService
             System.err.println("AuthenticationService nie ma metody hashPassword: " + e.getMessage());
-
-            // Fallback - użyj lokalnej implementacji MD5
             return fallbackHashPassword(password);
         }
     }
 
-    // Fallback jeśli AuthenticationService nie ma metody hashowania
     private String fallbackHashPassword(String password) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
             byte[] hashBytes = md.digest(password.getBytes());
-
             StringBuilder hexString = new StringBuilder();
             for (byte b : hashBytes) {
                 String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
+                if (hex.length() == 1) hexString.append('0');
                 hexString.append(hex);
             }
             return hexString.toString();
         } catch (java.security.NoSuchAlgorithmException e) {
             System.err.println("Błąd hashowania: " + e.getMessage());
-            return password; // W ostateczności zwróć niezhashowane hasło
+            return password;
         }
     }
 
     @FXML
     private void switch_to_main_menu(ActionEvent event) throws IOException {
+        if (clientConnection != null && clientConnection.isConnected()) {
+            clientConnection.disconnect();
+        }
+
         Stage stage;
         Scene scene;
         Parent root;
@@ -178,14 +216,22 @@ public class LoginController {
 
     @FXML
     private void switch_to_lobby(ActionEvent event) throws IOException {
+        System.out.println("Przechodzę do lobby...");
+        System.out.println("Połączenie aktywne: " + (clientConnection != null && clientConnection.isConnected()));
+        System.out.println("Nickname: " + savedLoginText);
+
+        if (clientConnection == null || !clientConnection.isConnected()) {
+            showError("Brak połączenia z serwerem");
+            return;
+        }
+
         Stage stage;
         Scene scene;
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/lobby.fxml"));
         Parent root = loader.load();
         LobbyController lobbyController = loader.getController();
 
-        // Przekaż połączenie i nick do LobbyController
-        lobbyController.setupConnection(clientConnection, getSavedLoginText());
+        lobbyController.setupConnection(clientConnection, savedLoginText);
 
         stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
         scene = new Scene(root);
@@ -193,9 +239,12 @@ public class LoginController {
         stage.setScene(scene);
         stage.setFullScreen(true);
         stage.show();
+
+        System.out.println("Przejście do lobby zakończone sukcesem");
     }
 
     private void showError(String message) {
+        System.err.println("BŁĄD: " + message);
         errorLabel.setText(message);
         errorLabel.setVisible(true);
     }
