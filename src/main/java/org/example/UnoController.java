@@ -407,36 +407,63 @@ public class UnoController implements Initializable {
         }
     }
     private void updateTurn(String player) {
-        System.out.println("updateTurn wywołane dla gracza: " + player + " (ja: " + nickname + ")");
+        System.out.println("=== updateTurn ===");
+        System.out.println("Nowy gracz: " + player);
+        System.out.println("Ja: " + nickname);
+        System.out.println("Czy moja tura? " + player.equals(nickname));
 
         Platform.runLater(() -> {
             currentPlayer = player;
             myTurn = player.equals(nickname);
-            System.out.println("Czy moja tura? " + myTurn);
+
+            System.out.println("myTurn ustawione na: " + myTurn);
 
             if (myTurn) {
                 labelTura.setText("Twoja tura!");
                 instrukcja.setText("Wybierz kartę do zagrania lub kliknij talię, aby dobrać kartę");
 
+                // Włącz przycisk dobierania
                 if (przyciskDobierania != null) {
                     przyciskDobierania.setDisable(false);
                     przyciskDobierania.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
+                    System.out.println("Przycisk dobierania włączony");
                 }
-                // Odblokuj karty
+
+                // Odblokuj wszystkie karty w ręce
                 for (var child : rekaGracza.getChildren()) {
                     child.setDisable(false);
                     child.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
+
+                    // Znajdź odpowiadającą kartę i ustaw handler
+                    int index = rekaGracza.getChildren().indexOf(child);
+                    if (index >= 0 && index < kartyGracza.size()) {
+                        Card card = kartyGracza.get(index);
+                        child.setOnMouseClicked(e -> playCard(card));
+                    }
                 }
+                System.out.println("Karty odblokowane");
+
             } else {
                 labelTura.setText("Tura gracza: " + player);
                 instrukcja.setText("Oczekiwanie na ruch gracza " + player);
 
-                // Zablokuj karty
+                // Wyłącz przycisk dobierania
+                if (przyciskDobierania != null) {
+                    przyciskDobierania.setDisable(true);
+                    przyciskDobierania.setStyle("-fx-opacity: 0.5; -fx-cursor: default;");
+                    System.out.println("Przycisk dobierania wyłączony");
+                }
+
+                // Zablokuj wszystkie karty w ręce
                 for (var child : rekaGracza.getChildren()) {
                     child.setDisable(true);
                     child.setStyle("-fx-opacity: 0.7; -fx-cursor: default;");
+                    child.setOnMouseClicked(null);
                 }
+                System.out.println("Karty zablokowane");
             }
+
+            System.out.println("=== koniec updateTurn ===\n");
         });
     }
 
@@ -451,22 +478,7 @@ public class UnoController implements Initializable {
             String player = parts[0];
             String cardStr = parts[1];
 
-            if (player.equals(nickname)) {
-                // Usuń kartę z ręki klienta
-                Platform.runLater(() -> {
-                    for (int i = kartyGracza.size() - 1; i >= 0; i--) {
-                        Card c = kartyGracza.get(i);
-                        if (c.toString().equals(cardStr)) {
-                            kartyGracza.remove(i);
-                            if (i < rekaGracza.getChildren().size()) {
-                                rekaGracza.getChildren().remove(i);
-                            }
-                            labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
-                            break;
-                        }
-                    }
-                });
-            }
+
 
             // Aktualizuj komunikat
             Platform.runLater(() -> {
@@ -480,6 +492,8 @@ public class UnoController implements Initializable {
     }
 
     private void handleCardDrawn(String cardStr) {
+        System.out.println("handleCardDrawn: Otrzymano DREW - " + cardStr);
+
         Platform.runLater(() -> {
             instrukcja.setText("Dobrałeś kartę: " + cardStr);
 
@@ -490,18 +504,16 @@ public class UnoController implements Initializable {
 
                 // Dodaj widok karty do ręki
                 StackPane kartaView = newCard.getView();
-                kartaView.setDisable(!myTurn || waitingForColorChoice);
-                kartaView.setStyle("-fx-cursor: " + (myTurn && !waitingForColorChoice ? "hand" : "default") + ";");
 
-                if (myTurn && !waitingForColorChoice) {
-                    kartaView.setOnMouseClicked(e -> playCard(newCard));
-                }
+                // Początkowo zablokuj kartę (tura się zmieni)
+                kartaView.setDisable(true);
+                kartaView.setStyle("-fx-opacity: 0.7; -fx-cursor: default;");
+                kartaView.setOnMouseClicked(null);
 
                 rekaGracza.getChildren().add(kartaView);
                 labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
 
-                // Aktualizuj widok przeciwników (ich liczba kart się nie zmieniła, ale może być potrzebne odświeżenie)
-                updateOpponentDisplays();
+                System.out.println("handleCardDrawn: Karta dodana do ręki, oczekiwanie na TURN...");
 
             } catch (Exception e) {
                 System.err.println("Błąd podczas dodawania dobranej karty: " + e.getMessage());
@@ -586,8 +598,7 @@ public class UnoController implements Initializable {
             clientConnection.sendMessage("PLAY " + cardStr);
             System.out.println("Wysłano kartę do serwera: " + cardStr);
 
-            // Tymczasowe usunięcie karty z ręki (do czasu otrzymania potwierdzenia od serwera)
-            removeCardFromHand(cardStr);
+
             instrukcja.setText("Wysyłanie karty...");
         }
     }
