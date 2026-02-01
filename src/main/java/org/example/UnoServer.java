@@ -355,10 +355,7 @@ public class UnoServer extends Thread {
                 System.out.println("Otrzymano inicjalizację gry");
                 initialize_game();
             } else if ("TOP5".equalsIgnoreCase(inputLine)) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
+                // Pozwalamy na TOP5 bez logowania
                 String top5 = db.Top5_Best(conn);
                 System.out.println(top5);
                 out.println("TOP5 " + top5);
