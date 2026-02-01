@@ -577,8 +577,6 @@ public class UnoServer extends Thread {
                 System.out.println("Próba zagrania karty: " + cardStr + " przez gracza: " + nickname);
                 Cart card = Cart.fromString(cardStr);
 
-                // ... (sprawdzanie i logika gry)
-
                 boolean success = currentGame.playCard(nickname, card);
 
                 if (success) {
@@ -586,6 +584,19 @@ public class UnoServer extends Thread {
 
                     Cart topCard = currentGame.getTopCard();
                     String currentPlayer = currentGame.getCurrentPlayer();
+
+                    // Sprawdź czy ktoś wygrał
+                    if (currentGame.hasPlayerWon(nickname)) {
+                        System.out.println("Gracz " + nickname + " wygrał grę!");
+                        db.increaseWins(conn, nickname);
+
+                        // Wyślij informację o zwycięzcy do wszystkich graczy
+                        broadcastMessage("WINNER " + nickname);
+
+                        // Zakończ grę
+                        endGame();
+                        return;
+                    }
 
                     // Budujemy wiadomość dla KAŻDEGO gracza INDYWIDUALNIE
                     for (String player : currentGame.getPlayers()) {
@@ -604,7 +615,7 @@ public class UnoServer extends Thread {
                                 }
                             }
 
-                            // Ręka BIEŻĄCEGO gracza (dla którego budujemy wiadomość)
+                            // Ręka BIEŻĄCEGO gracza
                             List<Cart> hand = currentGame.getHandForPlayer(player);
                             StringBuilder handStr = new StringBuilder();
                             for (int i = 0; i < hand.size(); i++) {
@@ -612,25 +623,17 @@ public class UnoServer extends Thread {
                                 if (i < hand.size() - 1) handStr.append(",");
                             }
 
-                            // Komunikat PLAY_RESULT z pełnym stanem
                             String message = String.format("PLAY_RESULT %s %s %s %s %s %s",
-                                    nickname,                    // kto zagrał
-                                    cardStr,                     // jaka karta
+                                    nickname,
+                                    cardStr,
                                     topCard != null ? topCard.toString() : "",
                                     currentPlayer,
                                     opponentsStr.toString(),
-                                    handStr.toString());        // RĘKA BIEŻĄCEGO GRACZA
+                                    handStr.toString());
 
                             System.out.println("Wysyłam do gracza " + player + ": " + message);
                             client.out.println(message);
                         }
-                    }
-
-                    // Sprawdź czy ktoś wygrał
-                    if (currentGame.hasPlayerWon(nickname)) {
-                        db.increaseWins(conn, nickname);
-                        endGame();
-                        return;
                     }
 
                     // Jeśli trzeba wybrać kolor dla WILD
