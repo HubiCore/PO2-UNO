@@ -9,31 +9,34 @@
    <children>
       <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="1200" layoutY="100" pickOnBounds="true" preserveRatio="true">
        <image>
-           <Image url="@assets/textures/tenor.gif" />
+           <Image url="@assets/textures/hubertW.jpg" />
        </image>
    </ImageView>
       <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="400" layoutY="100" pickOnBounds="true" preserveRatio="true">
           <image>
-              <Image url="@assets/textures/tenor.gif" />
+              <Image url="@assets/textures/hubertS.jpg" />
           </image>
       </ImageView>
-      <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="800" layoutY="100" pickOnBounds="true" preserveRatio="true">
+      <ImageView fitHeight="300.0" fitWidth="300.0" layoutX="859.0" layoutY="100.0" pickOnBounds="true" preserveRatio="true">
           <image>
-              <Image url="@assets/textures/tenor.gif" />
+              <Image url="@assets/textures/krzywy.png" />
           </image>
       </ImageView>
        <Button layoutX="800.0" layoutY="900.0" mnemonicParsing="false" onAction="#switch_to_main_menu" prefHeight="100.0" prefWidth="230.0" text="Powrót" />
-      <TextField editable="false" layoutX="469.0" layoutY="277.0" text="Hubert Wilczyński">
+      <Text fill="WHITE" layoutX="464.0" layoutY="422.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Hubert Stojek">
          <font>
-            <Font size="12.0" />
-         </font></TextField>
-      <TextField editable="false" layoutX="869.0" layoutY="277.0" text="Hubert Stojek">
+            <Font size="15.0" />
+         </font>
+      </Text>
+      <Text fill="WHITE" layoutX="866.0" layoutY="423.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Andrzej Raumiagi">
          <font>
-            <Font size="12.0" />
-         </font></TextField>
-      <TextField editable="false" layoutX="1269.0" layoutY="277.0" text="Andzrzej Raumiagi">
+            <Font size="15.0" />
+         </font>
+      </Text>
+      <Text fill="WHITE" layoutX="1250.0" layoutY="423.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Hubert Wilczyński">
          <font>
-            <Font size="12.0" />
-         </font></TextField>
+            <Font size="15.0" />
+         </font>
+      </Text>
    </children>
 </AnchorPane>
