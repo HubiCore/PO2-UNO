@@ -30,6 +30,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 public class UnoController implements Initializable {
+    private static final Logger logger = Logger.getInstance();
 
     /** Kontener dla wierzchniej karty na stole. */
     @FXML private StackPane stol;
@@ -112,21 +113,26 @@ public class UnoController implements Initializable {
      */
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        logger.info("Inicjalizacja UnoController");
+
         przeciwnicyKarty = new HashMap<>();
         kartyGracza = new ArrayList<>();
-        System.out.println("Kontroler zainicjalizowany");
+        logger.debug("Struktury danych zainicjalizowane");
 
         Platform.runLater(() -> {
             if (przyciskDobierania != null) {
                 przyciskDobierania.setOnAction(e -> dobierzKarte());
                 przyciskDobierania.setDisable(true);  // Początkowo wyłączony
                 przyciskDobierania.setStyle("-fx-opacity: 0.5;");
+                logger.debug("Przycisk dobierania skonfigurowany");
             }
             uiReady = true;
-            System.out.println("UI gotowe! Przetwarzam oczekujące wiadomości: " + pendingMessages.size());
+            logger.info("UI gotowe! Oczekujące wiadomości: " + pendingMessages.size());
 
             processPendingMessages();
         });
+
+        logger.info("UnoController zainicjalizowany");
     }
 
     /**
@@ -136,14 +142,15 @@ public class UnoController implements Initializable {
      * @param nickname nazwa gracza
      */
     public void setupConnection(ClientConnection connection, String nickname) {
+        logger.info("Konfiguracja połączenia dla gracza: " + nickname);
         this.clientConnection = connection;
         this.nickname = nickname;
-        System.out.println("Ustawiono połączenie dla: " + nickname);
+        logger.debug("Połączenie ustawione dla: " + nickname);
 
         startMessageReceiver();
         Platform.runLater(() -> {
             clientConnection.sendMessage("INIT_GAME ");
-            System.out.println("Wysłano INIT_GAME");
+            logger.debug("Wysłano INIT_GAME");
         });
     }
 
@@ -154,12 +161,12 @@ public class UnoController implements Initializable {
     private void startMessageReceiver() {
         messageReceiver = new Thread(() -> {
             try {
-                System.out.println("Rozpoczęto wątek odbierania wiadomości");
+                logger.info("Rozpoczęto wątek odbierania wiadomości");
                 while (gameActive.get() && clientConnection != null && clientConnection.isConnected()) {
                     try {
                         String message = clientConnection.receiveMessage();
                         if (message != null && !message.trim().isEmpty()) {
-                            System.out.println("Odebrano w wątku sieciowym: [" + message + "]");
+                            logger.debug("Odebrano w wątku sieciowym: [" + message + "]");
 
                             // Rozdziel po znakach nowej linii ORAZ po średnikach
                             String[] lines = message.split("\n");
@@ -170,7 +177,7 @@ public class UnoController implements Initializable {
                                     for (String part : parts) {
                                         String trimmedPart = part.trim();
                                         if (!trimmedPart.isEmpty()) {
-                                            System.out.println("Dodaję do kolejki: " + trimmedPart);
+                                            logger.debug("Dodaję do kolejki: " + trimmedPart);
                                             pendingMessages.offer(trimmedPart);
                                         }
                                     }
@@ -184,17 +191,20 @@ public class UnoController implements Initializable {
                         // Krótka pauza, aby nie obciążać CPU
                         Thread.sleep(50);
                     } catch (Exception e) {
-                        System.err.println("Błąd w odbiorze wiadomości: " + e.getMessage());
-                        e.printStackTrace();
+                        logger.error("Błąd w odbiorze wiadomości: " + e.getMessage());
+                        logger.error(e, "Szczegóły błędu");
                     }
                 }
+                logger.info("Wątek odbierania wiadomości zakończony");
             } catch (Exception e) {
-                System.err.println("Błąd w wątku odbierania: " + e.getMessage());
+                logger.error("Błąd w wątku odbierania: " + e.getMessage());
+                logger.error(e, "Szczegóły błędu");
                 Platform.runLater(() -> showError("Utracono połączenie z serwerem"));
             }
         });
         messageReceiver.setDaemon(true);
         messageReceiver.start();
+        logger.debug("Wątek odbierania wiadomości uruchomiony");
     }
 
     /**
@@ -204,6 +214,7 @@ public class UnoController implements Initializable {
      */
     private void removeCardFromHand(String cardStr) {
         Platform.runLater(() -> {
+            logger.debug("Usuwanie karty z ręki: " + cardStr);
             for (int i = 0; i < kartyGracza.size(); i++) {
                 Card card = kartyGracza.get(i);
                 if (card.toString().equals(cardStr)) {
@@ -212,6 +223,7 @@ public class UnoController implements Initializable {
                         rekaGracza.getChildren().remove(i);
                     }
                     labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
+                    logger.debug("Karta usunięta. Pozostałe karty: " + kartyGracza.size());
                     break;
                 }
             }
@@ -223,13 +235,14 @@ public class UnoController implements Initializable {
      */
     private void processPendingMessages() {
         if (!uiReady) {
-            System.out.println("UI niegotowe, pomijam przetwarzanie");
+            logger.warning("UI niegotowe, pomijam przetwarzanie");
             return;
         }
 
+        logger.debug("Przetwarzanie oczekujących wiadomości: " + pendingMessages.size());
         while (!pendingMessages.isEmpty()) {
             String message = pendingMessages.poll();
-            System.out.println("Przetwarzam wiadomość z kolejki: " + message);
+            logger.debug("Przetwarzam wiadomość z kolejki: " + message);
             handleServerMessage(message);
         }
     }
@@ -241,70 +254,78 @@ public class UnoController implements Initializable {
      * @param message pełny komunikat otrzymany z serwera
      */
     private void handleServerMessage(String message) {
-        System.out.println("=== ROZPOCZĘCIE handleServerMessage ===");
-        System.out.println("Oryginalna wiadomość: [" + message + "]");
+        logger.debug("=== ROZPOCZĘCIE handleServerMessage ===");
+        logger.debug("Oryginalna wiadomość: [" + message + "]");
 
         String trimmed = message.trim();
-        System.out.println("Przetwarzam komendę: [" + trimmed + "]");
+        logger.debug("Przetwarzam komendę: [" + trimmed + "]");
 
         if (trimmed.startsWith("INIT_GAME ")) {
+            logger.debug("Inicjalizacja gry");
             handleGameInitialization(trimmed.substring(10));
         }
         else if (trimmed.startsWith("PLAY_RESULT ")) {
-            System.out.println("Otrzymano wynik zagrania karty");
+            logger.debug("Otrzymano wynik zagrania karty");
             handlePlayResult(trimmed.substring(12));
         }
         else if (trimmed.startsWith("HAND ")) {
             String handData = trimmed.substring(5);
-            System.out.println("Dane ręki: " + handData);
+            logger.debug("Dane ręki: " + handData);
             updateHand(handData);
         }
         else if (trimmed.startsWith("TOP_CARD ")) {
-            System.out.println("Aktualizacja wierzchniej karty");
+            logger.debug("Aktualizacja wierzchniej karty");
             updateTopCard(trimmed.substring(9));
         }
         else if (trimmed.startsWith("PLAYERS ")) {
-            System.out.println("Aktualizacja graczy");
+            logger.debug("Aktualizacja graczy");
             updateOpponents(trimmed.substring(8));
         }
         else if (trimmed.startsWith("TURN ")) {
-            System.out.println("Aktualizacja tury");
+            logger.debug("Aktualizacja tury");
             updateTurn(trimmed.substring(5));
         }
         else if (trimmed.startsWith("PLAYED ")) {
+            logger.debug("Karta zagrana");
             handleCardPlayed(trimmed.substring(7));
         }
         else if (trimmed.startsWith("DREW ")) {
+            logger.debug("Karta dobrana");
             handleCardDrawn(trimmed.substring(5));
         }
         else if (trimmed.startsWith("WINNER ")) {
+            logger.debug("Informacja o zwycięzcy");
             handleWinner(trimmed.substring(7));
         }
         else if (trimmed.startsWith("CHOOSE_COLOR")) {
+            logger.debug("Wybór koloru wymagany");
             promptColorChoice();
         }
         else if (trimmed.startsWith("WILD_COLOR ")) {
+            logger.debug("Kolor dzikiej karty zaktualizowany");
             updateWildColor(trimmed.substring(11));
         }
         else if (trimmed.startsWith("ERROR")) {
+            logger.error("Błąd serwera: " + trimmed);
             showError(trimmed);
         }
         else if (trimmed.startsWith("GAME_ENDED")) {
+            logger.info("Gra zakończona przez serwer");
             gameEnded();
         }
         else if (trimmed.startsWith("WINNER ")) {
-            System.out.println("Otrzymano informację o zwycięzcy");
+            logger.info("Otrzymano informację o zwycięzcy");
             handleWinner(trimmed.substring(7));
         }
         else if (trimmed.startsWith("GAME_ENDED")) {
-            System.out.println("Gra zakończona przez serwer");
+            logger.info("Gra zakończona przez serwer");
             gameEnded();
         }
         else {
-            System.out.println("Nieznana komenda: " + trimmed);
+            logger.warning("Nieznana komenda: " + trimmed);
         }
 
-        System.out.println("=== ZAKOŃCZENIE handleServerMessage ===\n");
+        logger.debug("=== ZAKOŃCZENIE handleServerMessage ===\n");
     }
 
     /**
@@ -315,11 +336,11 @@ public class UnoController implements Initializable {
      *                      "gracz karta wierzchnia_karta aktualny_gracz przeciwnicy ręka"
      */
     private void handlePlayResult(String playResultData) {
-        System.out.println("Przetwarzanie PLAY_RESULT: " + playResultData);
+        logger.debug("Przetwarzanie PLAY_RESULT: " + playResultData);
 
         String[] parts = playResultData.split(" ", 6);
         if (parts.length != 6) {
-            System.err.println("Błędny format PLAY_RESULT: " + playResultData);
+            logger.error("Błędny format PLAY_RESULT: " + playResultData);
             return;
         }
 
@@ -346,8 +367,10 @@ public class UnoController implements Initializable {
             // Wyświetl komunikat
             if (playerWhoPlayed.equals(nickname)) {
                 instrukcja.setText("Twoja karta została zagrana");
+                logger.debug("Twoja karta została zagrana: " + cardPlayed);
             } else {
                 instrukcja.setText("Gracz " + playerWhoPlayed + " zagrał kartę");
+                logger.debug("Gracz " + playerWhoPlayed + " zagrał kartę: " + cardPlayed);
             }
         });
     }
@@ -359,11 +382,11 @@ public class UnoController implements Initializable {
      *                "wierzchnia_karta aktualny_gracz przeciwnicy ręka"
      */
     private void handleGameInitialization(String initData) {
-        System.out.println("Inicjalizacja gry: " + initData);
+        logger.info("Inicjalizacja gry: " + initData);
 
         String[] parts = initData.split(" ", 4);
         if (parts.length != 4) {
-            System.err.println("Błędny format INIT_GAME: " + initData);
+            logger.error("Błędny format INIT_GAME: " + initData);
             return;
         }
 
@@ -372,10 +395,15 @@ public class UnoController implements Initializable {
         String opponents = parts[2];
         String hand = parts[3];
 
+        logger.debug("Top card: " + topCard + ", Current player: " + currentPlayer +
+                ", Opponents: " + opponents + ", Hand size: " + hand.split(",").length);
+
         updateTopCard(topCard);
         updateTurn(currentPlayer);
         updateOpponents(opponents);
         updateHand(hand);
+
+        logger.info("Gra zainicjalizowana");
     }
 
     /**
@@ -385,12 +413,12 @@ public class UnoController implements Initializable {
      *               oddzielone przecinkami (np. "RED:5,BLUE:SKIP")
      */
     private void updateHand(String handStr) {
-        System.out.println("updateHand wywołane z: " + handStr);
+        logger.debug("updateHand wywołane z danymi o długości: " + handStr.length());
 
         Platform.runLater(() -> {
             try {
                 if (rekaGracza == null) {
-                    System.err.println("ERROR: rekaGracza is null!");
+                    logger.error("ERROR: rekaGracza is null!");
                     return;
                 }
 
@@ -398,7 +426,7 @@ public class UnoController implements Initializable {
                 rekaGracza.getChildren().clear();
 
                 String[] cards = handStr.split(",");
-                System.out.println("Liczba kart: " + cards.length);
+                logger.debug("Liczba kart do wyświetlenia: " + cards.length);
 
                 for (String cardStr : cards) {
                     cardStr = cardStr.trim();
@@ -419,15 +447,17 @@ public class UnoController implements Initializable {
 
                             rekaGracza.getChildren().add(kartaView);
                         } catch (Exception e) {
-                            System.err.println("Błąd parsowania karty: " + cardStr);
+                            logger.error("Błąd parsowania karty: " + cardStr);
+                            logger.error(e, "Szczegóły błędu");
                         }
                     }
                 }
 
                 labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
-                System.out.println("Zaktualizowano rękę, liczba kart: " + kartyGracza.size());
+                logger.debug("Ręka zaktualizowana, liczba kart: " + kartyGracza.size());
             } catch (Exception e) {
-                System.err.println("Błąd w updateHand: " + e.getMessage());
+                logger.error("Błąd w updateHand: " + e.getMessage());
+                logger.error(e, "Szczegóły błędu");
             }
         });
     }
@@ -444,10 +474,11 @@ public class UnoController implements Initializable {
             if (parts.length == 2) {
                 wierzchniaKarta = new Card(parts[0], parts[1]);
                 stol.getChildren().add(wierzchniaKarta.getView());
-                System.out.println("Wierzchnia karta ustawiona: " + parts[0] + " " + parts[1]);
+                logger.debug("Wierzchnia karta ustawiona: " + parts[0] + " " + parts[1]);
             }
         } catch (Exception e) {
-            System.err.println("Błąd parsowania top card: " + cardStr);
+            logger.error("Błąd parsowania top card: " + cardStr);
+            logger.error(e, "Szczegóły błędu");
         }
     }
 
@@ -461,16 +492,20 @@ public class UnoController implements Initializable {
         przeciwnicyKarty.clear();
         String[] players = playersStr.split(",");
 
+        logger.debug("Aktualizacja przeciwników: " + playersStr);
+
         for (String player : players) {
             if (!player.isEmpty()) {
                 String[] parts = player.split(":");
                 if (parts.length == 2) {
                     przeciwnicyKarty.put(parts[0], Integer.parseInt(parts[1]));
+                    logger.debug("Przeciwnik: " + parts[0] + " ma " + parts[1] + " kart");
                 }
             }
         }
 
         updateOpponentDisplays();
+        logger.debug("Przeciwnicy zaktualizowani: " + przeciwnicyKarty.size() + " graczy");
     }
 
     /**
@@ -481,6 +516,8 @@ public class UnoController implements Initializable {
         Platform.runLater(() -> {
             List<String> opponents = new ArrayList<>(przeciwnicyKarty.keySet());
 
+            logger.debug("Aktualizacja wyświetlania przeciwników: " + opponents.size() + " przeciwników");
+
             if (opponents.size() >= 3) {
                 labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
                 labelLewy.setText(opponents.get(1) + " (" + przeciwnicyKarty.get(opponents.get(1)) + ")");
@@ -489,6 +526,7 @@ public class UnoController implements Initializable {
                 updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
                 updateHandDisplay(rekaLewego, przeciwnicyKarty.get(opponents.get(1)));
                 updateHandDisplay(rekaPrawego, przeciwnicyKarty.get(opponents.get(2)));
+                logger.debug("Wyświetlanie 3 przeciwników");
             } else if (opponents.size() == 2) {
                 labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
                 labelLewy.setText(opponents.get(1) + " (" + przeciwnicyKarty.get(opponents.get(1)) + ")");
@@ -497,6 +535,7 @@ public class UnoController implements Initializable {
                 updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
                 updateHandDisplay(rekaLewego, przeciwnicyKarty.get(opponents.get(1)));
                 rekaPrawego.getChildren().clear();
+                logger.debug("Wyświetlanie 2 przeciwników");
             } else if (opponents.size() == 1) {
                 labelPrzeciwnik.setText(opponents.get(0) + " (" + przeciwnicyKarty.get(opponents.get(0)) + ")");
                 labelLewy.setText("");
@@ -505,6 +544,7 @@ public class UnoController implements Initializable {
                 updateHandDisplay(rekaPrzeciwnika, przeciwnicyKarty.get(opponents.get(0)));
                 rekaLewego.getChildren().clear();
                 rekaPrawego.getChildren().clear();
+                logger.debug("Wyświetlanie 1 przeciwnika");
             }
         });
     }
@@ -521,6 +561,7 @@ public class UnoController implements Initializable {
             Card dummyCard = new Card("RED", "0");
             handBox.getChildren().add(dummyCard.getBackView());
         }
+        logger.debug("Wyświetlono " + cardCount + " kart przeciwnika");
     }
 
     /**
@@ -530,16 +571,18 @@ public class UnoController implements Initializable {
     @FXML
     private void dobierzKarte() {
         if (myTurn && !waitingForColorChoice && clientConnection != null && clientConnection.isConnected()) {
-            System.out.println("Dobieranie karty...");
+            logger.info("Dobieranie karty...");
 
             // Wyłącz przycisk na chwilę, aby uniknąć wielokrotnych kliknięć
             if (przyciskDobierania != null) {
                 przyciskDobierania.setDisable(true);
+                logger.debug("Przycisk dobierania wyłączony");
             }
 
             // Wyślij komendę do serwera
             clientConnection.sendMessage("DRAW");
             instrukcja.setText("Dobieranie karty...");
+            logger.debug("Wysłano komendę DRAW do serwera");
 
             // Po krótkim czasie przywróć stan przycisku (jeśli nadal jest tura)
             new java.util.Timer().schedule(
@@ -549,12 +592,17 @@ public class UnoController implements Initializable {
                             Platform.runLater(() -> {
                                 if (myTurn && przyciskDobierania != null) {
                                     przyciskDobierania.setDisable(false);
+                                    logger.debug("Przycisk dobierania włączony ponownie");
                                 }
                             });
                         }
                     },
                     1000  // 1 sekunda
             );
+        } else {
+            logger.warning("Nie można dobrać karty: tura=" + myTurn +
+                    ", waitingForColorChoice=" + waitingForColorChoice +
+                    ", connected=" + (clientConnection != null && clientConnection.isConnected()));
         }
     }
 
@@ -565,16 +613,16 @@ public class UnoController implements Initializable {
      * @param player nazwa gracza, który ma aktualną turę
      */
     private void updateTurn(String player) {
-        System.out.println("=== updateTurn ===");
-        System.out.println("Nowy gracz: " + player);
-        System.out.println("Ja: " + nickname);
-        System.out.println("Czy moja tura? " + player.equals(nickname));
+        logger.debug("=== updateTurn ===");
+        logger.debug("Nowy gracz: " + player);
+        logger.debug("Ja: " + nickname);
+        logger.debug("Czy moja tura? " + player.equals(nickname));
 
         Platform.runLater(() -> {
             currentPlayer = player;
             myTurn = player.equals(nickname);
 
-            System.out.println("myTurn ustawione na: " + myTurn);
+            logger.debug("myTurn ustawione na: " + myTurn);
 
             if (myTurn) {
                 labelTura.setText("Twoja tura!");
@@ -584,7 +632,7 @@ public class UnoController implements Initializable {
                 if (przyciskDobierania != null) {
                     przyciskDobierania.setDisable(false);
                     przyciskDobierania.setStyle("-fx-opacity: 1.0; -fx-cursor: hand;");
-                    System.out.println("Przycisk dobierania włączony");
+                    logger.debug("Przycisk dobierania włączony");
                 }
 
                 // Odblokuj wszystkie karty w ręce
@@ -599,7 +647,7 @@ public class UnoController implements Initializable {
                         child.setOnMouseClicked(e -> playCard(card));
                     }
                 }
-                System.out.println("Karty odblokowane");
+                logger.debug("Karty odblokowane, liczba kart: " + kartyGracza.size());
 
             } else {
                 labelTura.setText("Tura gracza: " + player);
@@ -609,7 +657,7 @@ public class UnoController implements Initializable {
                 if (przyciskDobierania != null) {
                     przyciskDobierania.setDisable(true);
                     przyciskDobierania.setStyle("-fx-opacity: 0.5; -fx-cursor: default;");
-                    System.out.println("Przycisk dobierania wyłączony");
+                    logger.debug("Przycisk dobierania wyłączony");
                 }
 
                 // Zablokuj wszystkie karty w ręce
@@ -618,10 +666,10 @@ public class UnoController implements Initializable {
                     child.setStyle("-fx-opacity: 0.7; -fx-cursor: default;");
                     child.setOnMouseClicked(null);
                 }
-                System.out.println("Karty zablokowane");
+                logger.debug("Karty zablokowane, liczba kart: " + kartyGracza.size());
             }
 
-            System.out.println("=== koniec updateTurn ===\n");
+            logger.debug("=== koniec updateTurn ===\n");
         });
     }
 
@@ -631,7 +679,7 @@ public class UnoController implements Initializable {
      * @param playInfo informacja o zagranej karcie w formacie "gracz karta"
      */
     private void handleCardPlayed(String playInfo) {
-        System.out.println("Otrzymano PLAYED: " + playInfo);
+        logger.debug("Otrzymano PLAYED: " + playInfo);
 
         // Usuń ewentualne dodatkowe białe znaki
         playInfo = playInfo.trim();
@@ -645,8 +693,10 @@ public class UnoController implements Initializable {
             Platform.runLater(() -> {
                 if (!player.equals(nickname)) {
                     instrukcja.setText("Gracz " + player + " zagrał kartę");
+                    logger.debug("Gracz " + player + " zagrał kartę: " + cardStr);
                 } else {
                     instrukcja.setText("Twoja karta została zagrana");
+                    logger.debug("Twoja karta została zagrana: " + cardStr);
                 }
             });
         }
@@ -659,7 +709,7 @@ public class UnoController implements Initializable {
      * @param cardStr reprezentacja dobranej karty
      */
     private void handleCardDrawn(String cardStr) {
-        System.out.println("handleCardDrawn: Otrzymano DREW - " + cardStr);
+        logger.info("handleCardDrawn: Otrzymano DREW - " + cardStr);
 
         Platform.runLater(() -> {
             instrukcja.setText("Dobrałeś kartę: " + cardStr);
@@ -680,10 +730,12 @@ public class UnoController implements Initializable {
                 rekaGracza.getChildren().add(kartaView);
                 labelGracz.setText("Twoje karty (" + kartyGracza.size() + ")");
 
-                System.out.println("handleCardDrawn: Karta dodana do ręki, oczekiwanie na TURN...");
+                logger.info("Karta dodana do ręki, oczekiwanie na TURN...");
+                logger.debug("Liczba kart po dobraniu: " + kartyGracza.size());
 
             } catch (Exception e) {
-                System.err.println("Błąd podczas dodawania dobranej karty: " + e.getMessage());
+                logger.error("Błąd podczas dodawania dobranej karty: " + e.getMessage());
+                logger.error(e, "Szczegóły błędu");
             }
         });
     }
@@ -695,14 +747,17 @@ public class UnoController implements Initializable {
      * @param winner nazwa zwycięzcy
      */
     private void handleWinner(String winner) {
+        logger.info("Zwycięzca gry: " + winner);
         Platform.runLater(() -> {
             // Wyświetl komunikat o zwycięzcy
             if (winner.equals(nickname)) {
                 instrukcja.setText("WYGRAŁEŚ!");
                 instrukcja.setStyle("-fx-text-fill: gold; -fx-font-size: 48px; -fx-font-weight: bold;");
+                logger.info("Gratulacje! Wygrałeś grę!");
             } else {
                 instrukcja.setText("Wygrał gracz " + winner);
                 instrukcja.setStyle("-fx-text-fill: silver; -fx-font-size: 36px; -fx-font-weight: bold;");
+                logger.info("Wygrał gracz " + winner);
             }
 
             zablokujKarty();
@@ -711,6 +766,7 @@ public class UnoController implements Initializable {
             if (przyciskDobierania != null) {
                 przyciskDobierania.setDisable(true);
                 przyciskDobierania.setStyle("-fx-opacity: 0.5;");
+                logger.debug("Przycisk dobierania wyłączony");
             }
 
             // Pokaż alert z informacją o wygranej
@@ -724,6 +780,7 @@ public class UnoController implements Initializable {
             }
 
             alert.show();
+            logger.debug("Alert końca gry wyświetlony");
 
             // Automatyczne przejście do menu głównego po 3 sekundach
             new java.util.Timer().schedule(
@@ -753,11 +810,14 @@ public class UnoController implements Initializable {
                                     // Zamknij połączenie z serwerem
                                     if (clientConnection != null) {
                                         clientConnection.disconnect();
+                                        logger.debug("Połączenie z serwerem zamknięte");
                                     }
 
+                                    logger.info("Powrót do menu głównego po zakończeniu gry");
+
                                 } catch (Exception e) {
-                                    System.err.println("Błąd podczas przełączania do menu: " + e.getMessage());
-                                    e.printStackTrace();
+                                    logger.error("Błąd podczas przełączania do menu: " + e.getMessage());
+                                    logger.error(e, "Szczegóły błędu");
                                     // W razie błędu spróbuj bezpośrednio zamknąć okno
                                     Platform.exit();
                                 }
@@ -775,6 +835,7 @@ public class UnoController implements Initializable {
      */
     private void gameEnded() {
         gameActive.set(false);
+        logger.info("Gra zakończona przez serwer");
 
         Platform.runLater(() -> {
             instrukcja.setText("Gra zakończona");
@@ -786,6 +847,7 @@ public class UnoController implements Initializable {
             alert.setHeaderText(null);
             alert.setContentText("Gra została zakończona przez serwer.\nPowrót do menu głównego za 3 sekundy...");
             alert.show();
+            logger.debug("Alert zakończenia gry wyświetlony");
 
             // Automatyczne przejście do menu głównego
             new java.util.Timer().schedule(
@@ -806,10 +868,14 @@ public class UnoController implements Initializable {
 
                                     if (clientConnection != null) {
                                         clientConnection.disconnect();
+                                        logger.debug("Połączenie z serwerem zamknięte");
                                     }
 
+                                    logger.info("Powrót do menu głównego po zakończeniu gry przez serwer");
+
                                 } catch (Exception e) {
-                                    System.err.println("Błąd podczas przełączania do menu: " + e.getMessage());
+                                    logger.error("Błąd podczas przełączania do menu: " + e.getMessage());
+                                    logger.error(e, "Szczegóły błędu");
                                 }
                             });
                         }
@@ -825,6 +891,7 @@ public class UnoController implements Initializable {
     private void promptColorChoice() {
         waitingForColorChoice = true;
         instrukcja.setText("Wybierz kolor: [R]ed, [G]reen, [B]lue, [Y]ellow");
+        logger.info("Wymagany wybór koloru po zagraniu karty WILD");
 
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -850,6 +917,7 @@ public class UnoController implements Initializable {
                 if (!color.isEmpty()) {
                     clientConnection.sendMessage("WILD_COLOR " + color);
                     waitingForColorChoice = false;
+                    logger.info("Wybrano kolor: " + color);
                 }
             }
         });
@@ -862,6 +930,7 @@ public class UnoController implements Initializable {
      */
     private void updateWildColor(String color) {
         instrukcja.setText("Kolor zmieniony na: " + color);
+        logger.debug("Kolor dzikiej karty zmieniony na: " + color);
     }
 
     /**
@@ -869,8 +938,10 @@ public class UnoController implements Initializable {
      */
     @FXML
     private void handleDrawCard() {
+        logger.debug("handleDrawCard wywołany");
         if (myTurn && !waitingForColorChoice) {
             clientConnection.sendMessage("DRAW");
+            logger.debug("Wysłano komendę DRAW (alternatywna metoda)");
         }
     }
 
@@ -883,9 +954,12 @@ public class UnoController implements Initializable {
         if (myTurn && !waitingForColorChoice) {
             String cardStr = card.getColor() + ":" + card.getValue();
             clientConnection.sendMessage("PLAY " + cardStr);
-            System.out.println("Wysłano kartę do serwera: " + cardStr);
+            logger.info("Wysłano kartę do serwera: " + cardStr);
 
             instrukcja.setText("Wysyłanie karty...");
+        } else {
+            logger.warning("Nie można zagrać karty: tura=" + myTurn +
+                    ", waitingForColorChoice=" + waitingForColorChoice);
         }
     }
 
@@ -895,6 +969,7 @@ public class UnoController implements Initializable {
      * @param message komunikat błędu do wyświetlenia
      */
     private void showError(String message) {
+        logger.error("Wyświetlam błąd: " + message);
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Błąd");
@@ -908,10 +983,12 @@ public class UnoController implements Initializable {
      * Blokuje wszystkie karty w ręce gracza (np. po zakończeniu gry).
      */
     private void zablokujKarty() {
+        logger.debug("Blokowanie kart w ręce");
         for (var child : rekaGracza.getChildren()) {
             child.setDisable(true);
             child.setStyle("-fx-opacity: 0.5; -fx-cursor: default;");
         }
+        logger.debug("Karty zablokowane");
     }
 
     /**
@@ -920,13 +997,16 @@ public class UnoController implements Initializable {
      */
     @FXML
     private void handleQuit() {
+        logger.info("Wychodzę z gry dla gracza: " + nickname);
         gameActive.set(false);
         if (messageReceiver != null) {
             messageReceiver.interrupt();
+            logger.debug("Wątek odbierania wiadomości przerwany");
         }
         if (clientConnection != null) {
             clientConnection.sendMessage("EXIT " + nickname);
             clientConnection.disconnect();
+            logger.info("Połączenie z serwerem zamknięte");
         }
     }
 }

@@ -23,6 +23,7 @@ import javafx.stage.Stage;
  * </pre>
  */
 public class Main extends Application {
+    private static final Logger logger = Logger.getInstance();
 
     /**
      * Główna metoda startowa JavaFX, inicjująca interfejs użytkownika.
@@ -40,16 +41,35 @@ public class Main extends Application {
      */
     @Override
     public void start(Stage primaryStage) throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/main_menu.fxml"));
-        Parent root = loader.load();
-        SceneController controller = loader.getController();
-        Scene scene = new Scene(root, 1920, 1080);
-        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        primaryStage.setTitle("FXML Example");
-        primaryStage.setScene(scene);
-        primaryStage.setFullScreenExitHint("");
-        primaryStage.setFullScreen(true);
-        primaryStage.show();
+        logger.info("=== URUCHAMIANIE APLIKACJI UNO ===");
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/main_menu.fxml"));
+            logger.debug("Ładowanie pliku FXML: /main_menu.fxml");
+
+            Parent root = loader.load();
+            SceneController controller = loader.getController();
+            logger.debug("Kontroler SceneController załadowany");
+
+            Scene scene = new Scene(root, 1920, 1080);
+            logger.debug("Scena utworzona (1920x1080)");
+
+            scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+            logger.debug("Style CSS załadowane");
+
+            primaryStage.setTitle("FXML Example");
+            primaryStage.setScene(scene);
+            primaryStage.setFullScreenExitHint("");
+            primaryStage.setFullScreen(true);
+            primaryStage.show();
+
+            logger.info("Aplikacja uruchomiona pomyślnie");
+            logger.info("Tryb pełnoekranowy włączony");
+
+        } catch (Exception e) {
+            logger.error(e, "Błąd podczas uruchamiania aplikacji");
+            throw e;
+        }
     }
 
     /**
@@ -62,6 +82,33 @@ public class Main extends Application {
      * @see Application#launch(String...)
      */
     public static void main(String[] args) {
-        launch(args);
+        logger.info("=== START APLIKACJI UNO CLIENT ===");
+        logger.info("Wersja: 1.0");
+        logger.info("Data uruchomienia: " + new java.util.Date());
+
+        try {
+            logger.info("Uruchamianie JavaFX Application...");
+            launch(args);
+        } catch (Exception e) {
+            logger.error(e, "Krytyczny błąd podczas uruchamiania aplikacji");
+            System.err.println("Krytyczny błąd: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Metoda wywoływana przy zamykaniu aplikacji.
+     * Zamyka logger przed wyjściem.
+     */
+    @Override
+    public void stop() throws Exception {
+        logger.info("=== ZAMYKANIE APLIKACJI ===");
+        logger.info("Zamykanie zasobów...");
+
+        // Zamknij logger
+        Logger.getInstance().shutdown();
+
+        super.stop();
+        logger.info("Aplikacja zamknięta");
     }
 }

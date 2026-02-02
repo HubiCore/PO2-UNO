@@ -18,12 +18,14 @@ public class ClientConnection implements AutoCloseable {
     private String host = "localhost";
     private int port = 2137;
     private boolean debug = true; // Włącz/Wyłącz logowanie debug
+    private static final Logger logger = Logger.getInstance();
 
     /**
      * Podstawowy konstruktor tworzący połączenie z domyślnymi ustawieniami
      * (localhost:2137).
      */
     public ClientConnection() {
+        logger.debug("Utworzono ClientConnection z domyślnymi ustawieniami");
     }
 
     /**
@@ -35,6 +37,7 @@ public class ClientConnection implements AutoCloseable {
     public ClientConnection(String host, int port) {
         this.host = host;
         this.port = port;
+        logger.debug("Utworzono ClientConnection: " + host + ":" + port);
     }
 
     /**
@@ -48,10 +51,11 @@ public class ClientConnection implements AutoCloseable {
     public boolean connect() {
         try {
             if (connected) {
+                logger.warning("Istniejące połączenie, zamykam przed nowym połączeniem");
                 disconnect();
             }
 
-            log("Próbuję połączyć się z " + host + ":" + port);
+            logger.info("Próbuję połączyć się z " + host + ":" + port);
             socket = new Socket();
             socket.connect(new InetSocketAddress(host, port), 5000); // Timeout połączenia 5 sekund
             socket.setSoTimeout(300000); // Timeout odczytu 10 sekund
@@ -60,18 +64,17 @@ public class ClientConnection implements AutoCloseable {
             writer = new PrintWriter(socket.getOutputStream(), true);
 
             connected = true;
-            log("Połączono pomyślnie z " + host + ":" + port);
+            logger.info("Połączono pomyślnie z " + host + ":" + port);
             return true;
 
         } catch (UnknownHostException e) {
-            logError("Nieznany host: " + host);
+            logger.error("Nieznany host: " + host);
             return false;
         } catch (SocketTimeoutException e) {
-            logError("Timeout połączenia z serwerem");
+            logger.error("Timeout połączenia z serwerem");
             return false;
         } catch (IOException e) {
-            logError("Błąd połączenia: " + e.getMessage());
-            if (debug) e.printStackTrace();
+            logger.error(e, "Błąd połączenia");
             return false;
         }
     }
@@ -85,23 +88,22 @@ public class ClientConnection implements AutoCloseable {
      */
     public boolean sendMessage(String message) {
         if (!connected) {
-            logError("Nie można wysłać - brak połączenia");
+            logger.error("Nie można wysłać - brak połączenia");
             return false;
         }
 
         if (writer == null) {
-            logError("Writer jest null");
+            logger.error("Writer jest null");
             return false;
         }
 
         try {
             writer.println(message);
             writer.flush();
-            log("Wysłano wiadomość: " + message);
+            logger.debug("Wysłano wiadomość: " + message);
             return true;
         } catch (Exception e) {
-            logError("Błąd wysyłania wiadomości: " + e.getMessage());
-            if (debug) e.printStackTrace();
+            logger.error(e, "Błąd wysyłania wiadomości");
             return false;
         }
     }
@@ -114,26 +116,25 @@ public class ClientConnection implements AutoCloseable {
      */
     public String receiveMessage() {
         if (!connected) {
-            logError("Nie można odebrać - brak połączenia");
+            logger.error("Nie można odebrać - brak połączenia");
             return null;
         }
 
         if (reader == null) {
-            logError("Reader jest null");
+            logger.error("Reader jest null");
             return null;
         }
 
         try {
-            log("Oczekuję na wiadomość...");
+            logger.debug("Oczekuję na wiadomość...");
             String response = reader.readLine();
-            log("Odebrano wiadomość: " + response);
+            logger.debug("Odebrano wiadomość: " + response);
             return response;
         } catch (SocketTimeoutException e) {
-            logError("Timeout oczekiwania na odpowiedź");
+            logger.error("Timeout oczekiwania na odpowiedź");
             return null;
         } catch (IOException e) {
-            logError("Błąd odbierania wiadomości: " + e.getMessage());
-            if (debug) e.printStackTrace();
+            logger.error(e, "Błąd odbierania wiadomości");
             disconnect();
             return null;
         }
@@ -148,20 +149,19 @@ public class ClientConnection implements AutoCloseable {
      */
     public String receiveMessageWithTimeout(int timeoutMs) {
         if (!connected || socket == null) {
-            logError("Nie można odebrać - brak połączenia lub socket jest null");
+            logger.error("Nie można odebrać - brak połączenia lub socket jest null");
             return null;
         }
 
         try {
-            log("Ustawiam timeout na " + timeoutMs + "ms");
+            logger.debug("Ustawiam timeout na " + timeoutMs + "ms");
             int originalTimeout = socket.getSoTimeout();
             socket.setSoTimeout(timeoutMs);
             String response = receiveMessage();
             socket.setSoTimeout(originalTimeout);
             return response;
         } catch (SocketException e) {
-            logError("Błąd ustawiania timeoutu: " + e.getMessage());
-            if (debug) e.printStackTrace();
+            logger.error(e, "Błąd ustawiania timeoutu");
             return null;
         }
     }
@@ -174,7 +174,7 @@ public class ClientConnection implements AutoCloseable {
      * @return Odpowiedź serwera jako String, lub null w przypadku błędu
      */
     public String sendAndReceive(String message) {
-        log("Wysyłam i oczekuję odpowiedzi...");
+        logger.debug("Wysyłam i oczekuję odpowiedzi...");
         if (sendMessage(message)) {
             return receiveMessage();
         }
@@ -189,7 +189,7 @@ public class ClientConnection implements AutoCloseable {
      * @return Odpowiedź serwera jako String, lub null w przypadku błędu lub timeoutu
      */
     public String sendAndReceiveWithTimeout(String message, int timeoutMs) {
-        log("Wysyłam i oczekuję odpowiedzi z timeoutem " + timeoutMs + "ms...");
+        logger.debug("Wysyłam i oczekuję odpowiedzi z timeoutem " + timeoutMs + "ms...");
         if (sendMessage(message)) {
             return receiveMessageWithTimeout(timeoutMs);
         }
@@ -215,7 +215,7 @@ public class ClientConnection implements AutoCloseable {
         while ((System.currentTimeMillis() - startTime) < timeoutMs) {
             int remainingTime = (int)(timeoutMs - (System.currentTimeMillis() - startTime));
             if (remainingTime <= 0) {
-                logError("Timeout oczekiwania na odpowiedź z prefiksem: " + expectedPrefix);
+                logger.error("Timeout oczekiwania na odpowiedź z prefiksem: " + expectedPrefix);
                 return null;
             }
 
@@ -225,14 +225,14 @@ public class ClientConnection implements AutoCloseable {
             }
 
             if (response.startsWith(expectedPrefix)) {
-                log("Znaleziono oczekiwaną odpowiedź: " + response);
+                logger.debug("Znaleziono oczekiwaną odpowiedź: " + response);
                 return response;
             } else {
-                log("Pomijam nieoczekiwaną odpowiedź: " + response);
+                logger.debug("Pomijam nieoczekiwaną odpowiedź: " + response);
             }
         }
 
-        logError("Nie znaleziono odpowiedzi z prefiksem: " + expectedPrefix);
+        logger.error("Nie znaleziono odpowiedzi z prefiksem: " + expectedPrefix);
         return null;
     }
 
@@ -254,7 +254,7 @@ public class ClientConnection implements AutoCloseable {
             while (true) {
                 String message = reader.readLine();
                 if (message == null) break;
-                log("Czyszczenie bufora - pomijam: " + message);
+                logger.debug("Czyszczenie bufora - pomijam: " + message);
                 messagesCleared++;
             }
 
@@ -262,14 +262,14 @@ public class ClientConnection implements AutoCloseable {
             socket.setSoTimeout(originalTimeout);
 
             if (messagesCleared > 0) {
-                log("Wyczyszczono " + messagesCleared + " wiadomości z bufora");
+                logger.info("Wyczyszczono " + messagesCleared + " wiadomości z bufora");
             }
 
         } catch (SocketTimeoutException e) {
             // To normalne - oznacza, że nie ma więcej wiadomości
+            logger.debug("Brak więcej wiadomości w buforze");
         } catch (IOException e) {
-            logError("Błąd czyszczenia bufora: " + e.getMessage());
-            if (debug) e.printStackTrace();
+            logger.error(e, "Błąd czyszczenia bufora");
         }
     }
 
@@ -281,7 +281,7 @@ public class ClientConnection implements AutoCloseable {
      */
     public boolean isConnected() {
         boolean isConnected = connected && socket != null && !socket.isClosed() && socket.isConnected();
-        log("Sprawdzam połączenie - wynik: " + isConnected);
+        logger.debug("Sprawdzam połączenie - wynik: " + isConnected);
         return isConnected;
     }
 
@@ -291,26 +291,28 @@ public class ClientConnection implements AutoCloseable {
      * Ustawia flagę connected na false.
      */
     public void disconnect() {
-        log("Rozłączam...");
+        logger.info("Rozłączam...");
         connected = false;
 
         try {
             if (writer != null) {
                 writer.close();
                 writer = null;
+                logger.debug("Writer zamknięty");
             }
             if (reader != null) {
                 reader.close();
                 reader = null;
+                logger.debug("Reader zamknięty");
             }
             if (socket != null && !socket.isClosed()) {
                 socket.close();
                 socket = null;
+                logger.debug("Socket zamknięty");
             }
-            log("Rozłączono pomyślnie");
+            logger.info("Rozłączono pomyślnie");
         } catch (IOException e) {
-            logError("Błąd podczas zamykania połączenia: " + e.getMessage());
-            if (debug) e.printStackTrace();
+            logger.error(e, "Błąd podczas zamykania połączenia");
         }
     }
 
@@ -331,6 +333,7 @@ public class ClientConnection implements AutoCloseable {
      * @param host Adres serwera (np. "localhost", "192.168.1.1")
      */
     public void setHost(String host) {
+        logger.debug("Ustawiono host: " + host);
         this.host = host;
     }
 
@@ -341,6 +344,7 @@ public class ClientConnection implements AutoCloseable {
      * @param port Port serwera
      */
     public void setPort(int port) {
+        logger.debug("Ustawiono port: " + port);
         this.port = port;
     }
 
@@ -352,6 +356,7 @@ public class ClientConnection implements AutoCloseable {
      * @param port Port serwera
      */
     public void setConnectionParams(String host, int port) {
+        logger.debug("Ustawiono parametry połączenia: " + host + ":" + port);
         this.host = host;
         this.port = port;
     }
@@ -363,6 +368,7 @@ public class ClientConnection implements AutoCloseable {
      * @param debug true aby włączyć logowanie debug, false aby wyłączyć
      */
     public void setDebug(boolean debug) {
+        logger.debug("Ustawiono tryb debug: " + debug);
         this.debug = debug;
     }
 
@@ -394,28 +400,6 @@ public class ClientConnection implements AutoCloseable {
     }
 
     /**
-     * Pomocnicza metoda do logowania informacji debugowych.
-     * Wiadomości są wyświetlane tylko gdy debug = true.
-     *
-     * @param message Wiadomość do zalogowania
-     */
-    private void log(String message) {
-        if (debug) {
-            System.out.println("ClientConnection: " + message);
-        }
-    }
-
-    /**
-     * Pomocnicza metoda do logowania błędów.
-     * Wiadomości błędów są zawsze wyświetlane (nawet gdy debug = false).
-     *
-     * @param message Wiadomość o błędzie
-     */
-    private void logError(String message) {
-        System.err.println("ClientConnection ERROR: " + message);
-    }
-
-    /**
      * Testuje połączenie z serwerem wysyłając komendę "PING".
      * Oczekuje odpowiedzi "PONG" w ciągu 3 sekund.
      *
@@ -427,9 +411,13 @@ public class ClientConnection implements AutoCloseable {
         }
 
         try {
+            logger.debug("Testowanie połączenia...");
             String originalResponse = sendAndReceiveWithTimeout("PING", 3000);
-            return originalResponse != null && originalResponse.equals("PONG");
+            boolean result = originalResponse != null && originalResponse.equals("PONG");
+            logger.debug("Test połączenia: " + result);
+            return result;
         } catch (Exception e) {
+            logger.error(e, "Błąd testowania połączenia");
             return false;
         }
     }

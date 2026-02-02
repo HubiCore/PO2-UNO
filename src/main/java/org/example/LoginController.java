@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.util.function.UnaryOperator;
 
 public class LoginController {
+    private static final Logger logger = Logger.getInstance();
+
     /**
      * Pole tekstowe do wprowadzenia loginu użytkownika.
      * Akceptuje tylko litery (w tym polskie znaki diakrytyczne) do 20 znaków.
@@ -71,6 +73,8 @@ public class LoginController {
      */
     @FXML
     public void initialize() {
+        logger.info("Inicjalizacja LoginController");
+
         authService = new AuthenticationService();
 
         UnaryOperator<TextFormatter.Change> loginFilter = change -> {
@@ -93,6 +97,9 @@ public class LoginController {
         // Debug: Automatyczne wypełnienie pól dla testów
         // loginTextField.setText("test");
         // passwordField.setText("test123");
+        // logger.debug("Pola testowe wypełnione");
+
+        logger.info("LoginController zainicjalizowany");
     }
 
     /**
@@ -105,61 +112,67 @@ public class LoginController {
      */
     @FXML
     private void handlePlayButton(ActionEvent event) throws IOException {
+        logger.info("=== ROZPOCZĘCIE LOGOWANIA ===");
+
         savedLoginText = loginTextField.getText().trim();
         savedPassword = passwordField.getText();
 
+        logger.info("Próba logowania użytkownika: " + savedLoginText);
         errorLabel.setVisible(false);
 
-        System.out.println("=== ROZPOCZĘCIE LOGOWANIA ===");
-        System.out.println("Login: " + savedLoginText);
-
         if (savedLoginText.isEmpty()) {
+            logger.warning("Nie podano nicku");
             showError("Wprowadź nick!");
             return;
         }
 
         if (!savedLoginText.matches("[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+")) {
+            logger.warning("Nieprawidłowy nick (tylko litery): " + savedLoginText);
             showError("Login może zawierać tylko litery!");
             return;
         }
 
         if (savedPassword.isEmpty()) {
+            logger.warning("Nie podano hasła dla użytkownika: " + savedLoginText);
             showError("Wprowadź hasło!");
             return;
         }
 
         if (savedPassword.length() < 6) {
+            logger.warning("Hasło za krótkie dla użytkownika: " + savedLoginText);
             showError("Hasło musi mieć co najmniej 6 znaków!");
             return;
         }
 
         String hashedPassword = hashPasswordUsingAuthService(savedPassword);
-        System.out.println("Hash hasła: " + hashedPassword);
+        logger.debug("Hash hasła wygenerowany");
 
         if (clientConnection != null && clientConnection.isConnected()) {
-            System.out.println("Zamykam istniejące połączenie...");
+            logger.info("Zamykam istniejące połączenie...");
             clientConnection.disconnect();
         }
 
         clientConnection = new ClientConnection();
-        System.out.println("Łączę z serwerem (localhost:2137)...");
+        logger.info("Łączę z serwerem (localhost:2137)...");
 
         boolean connected = clientConnection.connect();
-        System.out.println("Status połączenia: " + connected);
+        logger.info("Status połączenia: " + connected);
 
         if (!connected) {
+            logger.error("Nie udało się połączyć z serwerem");
             showError("Nie udało się połączyć z serwerem");
             clientConnection = null;
             return;
         }
 
         String loginData = "LOGIN " + savedLoginText + ":" + hashedPassword;
-        System.out.println("Wysyłam do serwera: " + loginData);
+        logger.info("Wysyłam do serwera: " + savedLoginText);
 
         boolean sent = clientConnection.sendMessage(loginData);
-        System.out.println("Status wysyłania: " + sent);
+        logger.info("Status wysyłania: " + sent);
 
         if (!sent) {
+            logger.error("Nie udało się wysłać danych logowania");
             showError("Nie udało się wysłać danych logowania");
             clientConnection.disconnect();
             clientConnection = null;
@@ -170,6 +183,7 @@ public class LoginController {
         long startTime = System.currentTimeMillis();
         long timeout = 100000;
         boolean loginProcessed = false;
+        logger.info("Oczekiwanie na odpowiedź serwera (timeout: " + timeout + "ms)");
 
         while (!loginProcessed && (System.currentTimeMillis() - startTime) < timeout) {
             String serverResponse = clientConnection.receiveMessageWithTimeout(1000);
@@ -178,23 +192,24 @@ public class LoginController {
                 continue; // Kontynuuj oczekiwanie
             }
 
-            System.out.println("Otrzymana odpowiedź: " + serverResponse);
+            logger.debug("Otrzymana odpowiedź: " + serverResponse);
 
             if (serverResponse.startsWith("LOGIN_SUCCESS")) {
-                System.out.println("Logowanie pomyślne!");
+                logger.info("Logowanie pomyślne dla użytkownika: " + savedLoginText);
                 loginProcessed = true;
                 // Przechodzimy do lobby
                 Platform.runLater(() -> {
                     try {
                         switch_to_lobby(event);
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        logger.error(e, "Błąd przejścia do lobby");
                         showError("Błąd przejścia do lobby: " + e.getMessage());
                     }
                 });
                 break;
             } else if (serverResponse.startsWith("LOGIN_ERROR")) {
                 String errorMessage = serverResponse.substring(11);
+                logger.error("Błąd logowania: " + errorMessage);
                 showError("Błąd logowania: " + errorMessage);
                 clientConnection.disconnect();
                 clientConnection = null;
@@ -202,12 +217,13 @@ public class LoginController {
                 break;
             } else {
                 // Ignoruj inne wiadomości (USERLIST, USER_JOINED itp.)
-                System.out.println("Ignoruję wiadomość podczas logowania: " + serverResponse);
+                logger.debug("Ignoruję wiadomość podczas logowania: " + serverResponse);
                 continue;
             }
         }
 
         if (!loginProcessed) {
+            logger.error("Brak odpowiedzi od serwera (timeout)");
             showError("Brak odpowiedzi od serwera (timeout)");
             if (clientConnection != null) {
                 clientConnection.disconnect();
@@ -226,11 +242,13 @@ public class LoginController {
      */
     private String hashPasswordUsingAuthService(String password) {
         try {
+            logger.debug("Haszowanie hasła przy użyciu AuthenticationService");
             java.lang.reflect.Method method = AuthenticationService.class.getDeclaredMethod("hashPassword", String.class);
             method.setAccessible(true);
             return (String) method.invoke(authService, password);
         } catch (Exception e) {
-            System.err.println("AuthenticationService nie ma metody hashPassword: " + e.getMessage());
+            logger.error("AuthenticationService nie ma metody hashPassword: " + e.getMessage());
+            logger.error(e, "Szczegóły błędu");
             return fallbackHashPassword(password);
         }
     }
@@ -243,6 +261,7 @@ public class LoginController {
      * @return zahashowane hasło w formacie szesnastkowym
      */
     private String fallbackHashPassword(String password) {
+        logger.debug("Używanie zapasowej metody haszowania (MD5)");
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
             byte[] hashBytes = md.digest(password.getBytes());
@@ -252,9 +271,12 @@ public class LoginController {
                 if (hex.length() == 1) hexString.append('0');
                 hexString.append(hex);
             }
-            return hexString.toString();
+            String result = hexString.toString();
+            logger.debug("Hash MD5 wygenerowany");
+            return result;
         } catch (java.security.NoSuchAlgorithmException e) {
-            System.err.println("Błąd hashowania: " + e.getMessage());
+            logger.error("Błąd hashowania: " + e.getMessage());
+            logger.error(e, "Szczegóły błędu");
             return password;
         }
     }
@@ -268,8 +290,11 @@ public class LoginController {
      */
     @FXML
     private void switch_to_main_menu(ActionEvent event) throws IOException {
+        logger.info("Przełączam do głównego menu z logowania");
+
         if (clientConnection != null && clientConnection.isConnected()) {
             clientConnection.disconnect();
+            logger.debug("Połączenie z serwerem zamknięte");
         }
 
         Stage stage;
@@ -283,6 +308,8 @@ public class LoginController {
         stage.setFullScreenExitHint("");
         stage.setFullScreen(true);
         stage.show();
+
+        logger.info("Przełączono do głównego menu");
     }
 
     /**
@@ -294,11 +321,11 @@ public class LoginController {
      */
     @FXML
     private void switch_to_lobby(ActionEvent event) throws IOException {
-        System.out.println("Przechodzę do lobby...");
-        System.out.println("Połączenie aktywne: " + (clientConnection != null && clientConnection.isConnected()));
-        System.out.println("Nickname: " + savedLoginText);
+        logger.info("Przechodzę do lobby dla użytkownika: " + savedLoginText);
+        logger.debug("Połączenie aktywne: " + (clientConnection != null && clientConnection.isConnected()));
 
         if (clientConnection == null || !clientConnection.isConnected()) {
+            logger.error("Brak połączenia z serwerem");
             showError("Brak połączenia z serwerem");
             return;
         }
@@ -318,7 +345,7 @@ public class LoginController {
         stage.setFullScreen(true);
         stage.show();
 
-        System.out.println("Przejście do lobby zakończone sukcesem");
+        logger.info("Przejście do lobby zakończone sukcesem dla użytkownika: " + savedLoginText);
     }
 
     /**
@@ -327,7 +354,7 @@ public class LoginController {
      * @param message treść komunikatu błędu
      */
     private void showError(String message) {
-        System.err.println("BŁĄD: " + message);
+        logger.error("BŁĄD LOGOWANIA: " + message);
         errorLabel.setText(message);
         errorLabel.setVisible(true);
     }

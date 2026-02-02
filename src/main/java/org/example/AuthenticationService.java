@@ -25,6 +25,7 @@ import java.security.NoSuchAlgorithmException;
 
 public class AuthenticationService {
     private Map<String, String> users = new HashMap<>();
+    private static final Logger logger = Logger.getInstance();
 
     /**
      * Konstruktor domyślny inicjalizujący serwis uwierzytelniania.
@@ -36,10 +37,14 @@ public class AuthenticationService {
      * </ul>
      */
     public AuthenticationService() {
+        logger.info("Inicjalizacja AuthenticationService");
+
         // Przykładowi użytkownicy z zahaszowanymi hasłami
         registerUser("admin", "admin123");
         registerUser("user", "password123");
         registerUser("test", "test123");
+
+        logger.info("AuthenticationService zainicjalizowany z przykładowymi użytkownikami");
     }
 
     /**
@@ -51,13 +56,24 @@ public class AuthenticationService {
      * @return {@code true} jeśli uwierzytelnienie się powiodło, {@code false} w przeciwnym wypadku
      */
     public boolean authenticate(String username, String password) {
+        logger.debug("Próba uwierzytelnienia użytkownika: " + username);
+
         String storedHash = users.get(username);
         if (storedHash == null) {
+            logger.warning("Użytkownik nie istnieje: " + username);
             return false; // Użytkownik nie istnieje
         }
 
         String inputHash = hashPassword(password);
-        return storedHash.equals(inputHash);
+        boolean result = storedHash.equals(inputHash);
+
+        if (result) {
+            logger.info("Uwierzytelnienie udane dla użytkownika: " + username);
+        } else {
+            logger.warning("Uwierzytelnienie nieudane dla użytkownika: " + username);
+        }
+
+        return result;
     }
 
     /**
@@ -75,23 +91,30 @@ public class AuthenticationService {
      *         lub użytkownik już istnieje
      */
     public boolean registerUser(String username, String password) {
+        logger.debug("Próba rejestracji użytkownika: " + username);
+
         // Walidacja nazwy użytkownika - tylko litery
         if (!username.matches("[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+")) {
+            logger.warning("Nieprawidłowa nazwa użytkownika (tylko litery): " + username);
             return false;
         }
 
         // Walidacja hasła - min 6 znaków
         if (password.length() < 6) {
+            logger.warning("Hasło za krótkie (min 6 znaków) dla użytkownika: " + username);
             return false;
         }
 
         if (users.containsKey(username)) {
+            logger.warning("Użytkownik już istnieje: " + username);
             return false; // Użytkownik już istnieje
         }
 
         // Hashuj hasło przed zapisaniem
         String hashedPassword = hashPassword(password);
         users.put(username, hashedPassword);
+
+        logger.info("Użytkownik zarejestrowany pomyślnie: " + username);
         return true;
     }
 
@@ -102,7 +125,9 @@ public class AuthenticationService {
      * @return {@code true} jeśli użytkownik istnieje, {@code false} w przeciwnym wypadku
      */
     public boolean userExists(String username) {
-        return users.containsKey(username);
+        boolean exists = users.containsKey(username);
+        logger.debug("Sprawdzanie istnienia użytkownika " + username + ": " + exists);
+        return exists;
     }
 
     /**
@@ -127,11 +152,15 @@ public class AuthenticationService {
                 }
                 hexString.append(hex);
             }
-            return hexString.toString();
+
+            String result = hexString.toString();
+            logger.debug("Hash hasła wygenerowany: " + result.substring(0, Math.min(8, result.length())) + "...");
+            return result;
 
         } catch (NoSuchAlgorithmException e) {
             // W przypadku błędu, użyj fallback - NIE RÓB TEGO W PRODUKCJI!
-            System.err.println("MD5 algorithm not found, using plain text (INSECURE!)");
+            logger.error("MD5 algorithm not found, using plain text (INSECURE!)");
+            logger.error(e, "Błąd podczas hashowania");
             return password; // Bardzo niebezpieczne!
         }
     }
@@ -141,9 +170,9 @@ public class AuthenticationService {
      * <p><b>Uwaga:</b> metoda służy wyłącznie do celów debugowania i nie powinna być używana w środowisku produkcyjnym.
      */
     public void printUsers() {
-        System.out.println("Zarejestrowani użytkownicy:");
+        logger.info("Zarejestrowani użytkownicy:");
         for (Map.Entry<String, String> entry : users.entrySet()) {
-            System.out.println(entry.getKey() + " -> " + entry.getValue());
+            logger.info(entry.getKey() + " -> " + entry.getValue());
         }
     }
 }

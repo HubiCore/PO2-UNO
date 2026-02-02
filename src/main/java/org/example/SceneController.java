@@ -16,6 +16,8 @@ import javafx.stage.Stage;
  * Wszystkie metody ustawiają tryb pełnoekranowy z ukrytą podpowiedzią wyjścia.
  */
 public class SceneController {
+    private static final Logger logger = Logger.getInstance();
+
     private Stage stage;
     private Scene scene;
     private Parent root;
@@ -28,15 +30,21 @@ public class SceneController {
      * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML
      */
     public void switch_to_main_menu(ActionEvent event) throws IOException {
-        System.out.println("switch_to_main_menu");
-        root = FXMLLoader.load(getClass().getResource("/main_menu.fxml"));
-        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
-        scene = new Scene(root);
-        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        stage.setScene(scene);
-        stage.setFullScreenExitHint("");
-        stage.setFullScreen(true);
-        stage.show();
+        logger.info("Przełączam do głównego menu");
+        try {
+            root = FXMLLoader.load(getClass().getResource("/main_menu.fxml"));
+            stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+            scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+            stage.setScene(scene);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreen(true);
+            stage.show();
+            logger.info("Główne menu załadowane pomyślnie");
+        } catch (Exception e) {
+            logger.error(e, "Błąd podczas przełączania do głównego menu");
+            throw e;
+        }
     }
 
     /**
@@ -47,15 +55,21 @@ public class SceneController {
      * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML
      */
     public void switch_to_settings(ActionEvent event) throws IOException {
-        System.out.println("Przechodzenie do ustawien");
-        Parent root = FXMLLoader.load(getClass().getResource("/settings.fxml"));
-        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
-        scene = new Scene(root);
-        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        stage.setScene(scene);
-        stage.setFullScreenExitHint("");
-        stage.setFullScreen(true);
-        stage.show();
+        logger.info("Przechodzenie do ustawień");
+        try {
+            Parent root = FXMLLoader.load(getClass().getResource("/settings.fxml"));
+            stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+            scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+            stage.setScene(scene);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreen(true);
+            stage.show();
+            logger.info("Ustawienia załadowane pomyślnie");
+        } catch (Exception e) {
+            logger.error(e, "Błąd podczas przełączania do ustawień");
+            throw e;
+        }
     }
 
     /**
@@ -66,15 +80,21 @@ public class SceneController {
      * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML
      */
     public void switch_to_login(ActionEvent event) throws IOException {
-        System.out.println("Przechodzenie do logowania");
-        Parent root = FXMLLoader.load(getClass().getResource("/login.fxml"));
-        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
-        scene = new Scene(root);
-        scene.getStylesheets().add(getClass().getResource("/style_log_join.css").toExternalForm());
-        stage.setScene(scene);
-        stage.setFullScreenExitHint("");
-        stage.setFullScreen(true);
-        stage.show();
+        logger.info("Przechodzenie do logowania");
+        try {
+            Parent root = FXMLLoader.load(getClass().getResource("/login.fxml"));
+            stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+            scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/style_log_join.css").toExternalForm());
+            stage.setScene(scene);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreen(true);
+            stage.show();
+            logger.info("Ekran logowania załadowany pomyślnie");
+        } catch (Exception e) {
+            logger.error(e, "Błąd podczas przełączania do logowania");
+            throw e;
+        }
     }
 
     /**
@@ -85,15 +105,21 @@ public class SceneController {
      * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML
      */
     public void switch_to_tab_wynik(ActionEvent event) throws IOException {
-        System.out.println("Przechodzenie do tabeli wyników");
-        Parent root = FXMLLoader.load(getClass().getResource("/tab_wyn.fxml"));
-        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
-        scene = new Scene(root);
-        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        stage.setScene(scene);
-        stage.setFullScreenExitHint("");
-        stage.setFullScreen(true);
-        stage.show();
+        logger.info("Przechodzenie do tabeli wyników");
+        try {
+            Parent root = FXMLLoader.load(getClass().getResource("/tab_wyn.fxml"));
+            stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+            scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+            stage.setScene(scene);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreen(true);
+            stage.show();
+            logger.info("Tabela wyników załadowana pomyślnie");
+        } catch (Exception e) {
+            logger.error(e, "Błąd podczas przełączania do tabeli wyników");
+            throw e;
+        }
     }
 
     /**
@@ -104,15 +130,21 @@ public class SceneController {
      * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML
      */
     public void switch_to_autorzy(ActionEvent event) throws IOException {
-        System.out.println("Przechodzenie do autorów");
-        Parent root = FXMLLoader.load(getClass().getResource("/autorzy.fxml"));
-        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
-        scene = new Scene(root);
-        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        stage.setScene(scene);
-        stage.setFullScreenExitHint("");
-        stage.setFullScreen(true);
-        stage.show();
+        logger.info("Przechodzenie do autorów");
+        try {
+            Parent root = FXMLLoader.load(getClass().getResource("/autorzy.fxml"));
+            stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+            scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+            stage.setScene(scene);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreen(true);
+            stage.show();
+            logger.info("Ekran autorów załadowany pomyślnie");
+        } catch (Exception e) {
+            logger.error(e, "Błąd podczas przełączania do autorów");
+            throw e;
+        }
     }
 
     /**
@@ -124,21 +156,27 @@ public class SceneController {
      * @throws IOException jeśli wystąpi błąd podczas ładowania pliku FXML
      */
     public void switch_to_game(ActionEvent event) throws IOException {
-        System.out.println("Przechodzenie do gry");
+        logger.info("Przechodzenie do gry");
 
-        // POPRAWKA: Użyj FXMLLoader z kontrolerem
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/uno_game.fxml"));
-        Parent root = loader.load(); // To automatycznie wywołuje initialize() w kontrolerze
+        try {
+            // POPRAWKA: Użyj FXMLLoader z kontrolerem
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/uno_game.fxml"));
+            Parent root = loader.load(); // To automatycznie wywołuje initialize() w kontrolerze
+            logger.debug("Kontroler UnoController załadowany");
 
-        stage = (Stage)((Node)event.getSource()).getScene().getWindow();
-        scene = new Scene(root);
-        scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        stage.setScene(scene);
-        stage.setFullScreenExitHint("");
-        stage.setFullScreen(true);
-        stage.show();
+            stage = (Stage)((Node)event.getSource()).getScene().getWindow();
+            scene = new Scene(root);
+            scene.getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
+            stage.setScene(scene);
+            stage.setFullScreenExitHint("");
+            stage.setFullScreen(true);
+            stage.show();
 
-        System.out.println("Gra załadowana!");
+            logger.info("Gra załadowana pomyślnie!");
+        } catch (Exception e) {
+            logger.error(e, "Błąd podczas przełączania do gry");
+            throw e;
+        }
     }
 
     /**
@@ -148,6 +186,13 @@ public class SceneController {
      * @throws IOException (nie jest faktycznie używane, ale pozostawione dla spójności sygnatur metod)
      */
     public void turn_off(ActionEvent event) throws IOException {
-        Platform.exit();
+        logger.info("Zamykanie aplikacji...");
+        try {
+            Platform.exit();
+            logger.info("Aplikacja zamknięta");
+        } catch (Exception e) {
+            logger.error(e, "Błąd podczas zamykania aplikacji");
+            throw e;
+        }
     }
 }

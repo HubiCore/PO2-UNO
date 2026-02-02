@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
  * Zawiera metody do walidacji z różnymi parametrami oraz zwracania szczegółowych wyników.
  */
 public class LoginValidation {
+    private static final Logger logger = Logger.getInstance();
 
     /**
      * Enum definiujący typy walidacji dostępne w klasie.
@@ -41,12 +42,18 @@ public class LoginValidation {
      * @return true jeśli tekst jest niepusty i pasuje do wzorca, false w przeciwnym razie
      */
     public static boolean isValid(ValidationType type, String text) {
+        logger.debug("Walidacja typu " + type + " dla tekstu: '" + text + "'");
+
         if (text == null || text.trim().isEmpty()) {
+            logger.debug("Tekst jest null lub pusty");
             return false;
         }
 
         String regex = getRegexForType(type);
-        return Pattern.matches(regex, text.trim());
+        boolean result = Pattern.matches(regex, text.trim());
+
+        logger.debug("Wynik walidacji: " + result);
+        return result;
     }
 
     /**
@@ -64,15 +71,29 @@ public class LoginValidation {
      *         false w przeciwnym razie
      */
     public static boolean isValid(ValidationType type, String text, int minLength, int maxLength) {
-        if (text == null) return false;
+        logger.debug("Walidacja typu " + type + " dla tekstu: '" + text + "' (długość: " + minLength + "-" + maxLength + ")");
+
+        if (text == null) {
+            logger.debug("Tekst jest null");
+            return false;
+        }
 
         String trimmed = text.trim();
 
-        if (minLength > 0 && trimmed.length() < minLength) return false;
-        if (maxLength > 0 && trimmed.length() > maxLength) return false;
+        if (minLength > 0 && trimmed.length() < minLength) {
+            logger.debug("Tekst za krótki: " + trimmed.length() + " < " + minLength);
+            return false;
+        }
+        if (maxLength > 0 && trimmed.length() > maxLength) {
+            logger.debug("Tekst za długi: " + trimmed.length() + " > " + maxLength);
+            return false;
+        }
 
         String regex = getRegexForType(type);
-        return Pattern.matches(regex, trimmed);
+        boolean result = Pattern.matches(regex, trimmed);
+
+        logger.debug("Wynik walidacji: " + result);
+        return result;
     }
 
     /**
@@ -85,8 +106,16 @@ public class LoginValidation {
      * @throws NullPointerException jeśli customRegex lub text są null
      */
     public static boolean isValidWithCustomRegex(String customRegex, String text) {
-        if (text == null || customRegex == null) return false;
-        return Pattern.matches(customRegex, text.trim());
+        logger.debug("Walidacja z wyrażeniem niestandardowym dla tekstu: '" + text + "'");
+
+        if (text == null || customRegex == null) {
+            logger.debug("Tekst lub wyrażenie jest null");
+            return false;
+        }
+
+        boolean result = Pattern.matches(customRegex, text.trim());
+        logger.debug("Wynik walidacji niestandardowej: " + result);
+        return result;
     }
 
     /**
@@ -96,7 +125,7 @@ public class LoginValidation {
      * @return wyrażenie regularne dla danego typu
      */
     private static String getRegexForType(ValidationType type) {
-        return switch (type) {
+        String regex = switch (type) {
             case ONLY_TEXT -> "^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\\s]+$";
             case ONLY_NUMBERS -> "^[0-9]+$";
             case ALPHANUMERIC -> "^[a-zA-Z0-9]+$";
@@ -104,6 +133,9 @@ public class LoginValidation {
             case USERNAME -> "^[a-zA-Z0-9_]{3,20}$";
             default -> ".*";
         };
+
+        logger.debug("Regex dla typu " + type + ": " + regex);
+        return regex;
     }
 
     /**
@@ -115,9 +147,12 @@ public class LoginValidation {
      * @return obiekt {@link ValidationResult} zawierający wynik walidacji i ewentualny komunikat błędu
      */
     public static ValidationResult validateWithMessage(ValidationType type, String text) {
+        logger.debug("Walidacja z wiadomością zwrotną dla typu " + type + " i tekstu: '" + text + "'");
+
         ValidationResult result = new ValidationResult();
 
         if (text == null || text.trim().isEmpty()) {
+            logger.debug("Tekst jest null lub pusty");
             result.setValid(false);
             result.setMessage("Tekst nie może być pusty");
             return result;
@@ -127,11 +162,13 @@ public class LoginValidation {
         String regex = getRegexForType(type);
 
         if (!Pattern.matches(regex, trimmed)) {
+            logger.debug("Tekst nie pasuje do wzorca");
             result.setValid(false);
             result.setMessage(getErrorMessage(type));
             return result;
         }
 
+        logger.debug("Walidacja udana");
         result.setValid(true);
         return result;
     }
@@ -143,7 +180,7 @@ public class LoginValidation {
      * @return tekstowy opis błędu walidacji
      */
     private static String getErrorMessage(ValidationType type) {
-        return switch (type) {
+        String errorMessage = switch (type) {
             case ONLY_TEXT -> "Dozwolone są tylko litery (w tym polskie znaki)";
             case ONLY_NUMBERS -> "Dozwolone są tylko cyfry";
             case ALPHANUMERIC -> "Dozwolone są tylko litery i cyfry";
@@ -151,6 +188,9 @@ public class LoginValidation {
             case USERNAME -> "Nazwa użytkownika może zawierać tylko litery, cyfry i podkreślenia (3-20 znaków)";
             default -> "Nieprawidłowy format";
         };
+
+        logger.debug("Komunikat błędu dla typu " + type + ": " + errorMessage);
+        return errorMessage;
     }
 
     /**
