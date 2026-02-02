@@ -16,6 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  */
 public class UnoServer extends Thread {
+
+
+    private final Logger logger = Logger.getInstance();
+
     /** Połączenie z bazą danych */
     private Connection conn;
 
@@ -44,32 +48,34 @@ public class UnoServer extends Thread {
         conn = db.connect("src/main/resources/baza.sql");
 
         if (conn == null) {
-            System.out.println("Nie udało się połączyć z bazą danych");
+            logger.error("Failed to connect to database");
             return;
         }
 
         int portNumber = 2137;
         try (ServerSocket serverSocket = new ServerSocket(portNumber)) {
-            System.out.println("Server is listening on port " + portNumber);
+            logger.info("Server is listening on port " + portNumber);
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Client connected from: " + clientSocket.getInetAddress());
+                logger.info("Client connected from: " + clientSocket.getInetAddress());
 
                 new ClientHandler(clientSocket, conn, db).start();
             }
         } catch (IOException e) {
-            System.out.println("Exception caught when trying to listen on port " + portNumber);
-            System.out.println(e.getMessage());
+            logger.error(e, "Exception caught when trying to listen on port " + portNumber);
         } finally {
             try {
                 if (conn != null && !conn.isClosed()) {
                     conn.close();
-                    System.out.println("Połączenie z bazą danych zamknięte");
+                    logger.info("Database connection closed");
                 }
             } catch (SQLException e) {
-                System.out.println("Błąd przy zamykaniu połączenia z bazą: " + e.getMessage());
+                logger.error(e, "Error closing database connection");
             }
+
+            // Zamknij logger przy wyłączaniu serwera
+            Logger.getInstance().shutdown();
         }
     }
 
@@ -93,6 +99,8 @@ public class UnoServer extends Thread {
         /** Status pokoju: "WAITING", "FULL", "IN_PROGRESS" */
         private String roomStatus; // "WAITING", "FULL", "IN_PROGRESS"
 
+        private final Logger logger = Logger.getInstance();
+
         /**
          * Tworzy nowy pokój gry z określonym identyfikatorem.
          *
@@ -103,6 +111,7 @@ public class UnoServer extends Thread {
             this.players = new ArrayList<>();
             this.gameInProgress = false;
             this.roomStatus = "WAITING";
+            logger.debug("GameRoom " + roomId + " created");
         }
 
         /**
@@ -114,11 +123,15 @@ public class UnoServer extends Thread {
          */
         public boolean addPlayer(String player) {
             if (players.size() >= 4 || gameInProgress) {
+                logger.debug("Cannot add player " + player + " to room " + roomId + " - room full or game in progress");
                 return false;
             }
             players.add(player);
+            logger.info("Player " + player + " joined room " + roomId);
+
             if (players.size() == 4) {
                 roomStatus = "FULL";
+                logger.info("Room " + roomId + " is now full");
             }
             return true;
         }
@@ -132,6 +145,7 @@ public class UnoServer extends Thread {
         public boolean removePlayer(String player) {
             boolean removed = players.remove(player);
             if (removed) {
+                logger.info("Player " + player + " left room " + roomId);
                 if (players.size() < 4 && !gameInProgress) {
                     roomStatus = "WAITING";
                 }
@@ -148,6 +162,7 @@ public class UnoServer extends Thread {
                 currentGame = new Game(new ArrayList<>(players));
                 gameInProgress = true;
                 roomStatus = "IN_PROGRESS";
+                logger.info("Game started in room " + roomId + " with players: " + players);
             }
         }
 
@@ -155,6 +170,7 @@ public class UnoServer extends Thread {
          * Kończy bieżącą grę i resetuje stan pokoju.
          */
         public void endGame() {
+            logger.info("Game ended in room " + roomId);
             currentGame = null;
             gameInProgress = false;
             roomStatus = "WAITING";
@@ -219,7 +235,7 @@ public class UnoServer extends Thread {
         int roomId = nextRoomId++;
         GameRoom room = new GameRoom(roomId);
         gameRooms.put(roomId, room);
-        System.out.println("Utworzono nowy pokój: " + roomId);
+        Logger.getInstance().info("Created new room: " + roomId);
         return room;
     }
 
@@ -281,6 +297,8 @@ public class UnoServer extends Thread {
         /** Aktualna wartość na stole */
         private String currentValue;
 
+        private final Logger logger = Logger.getInstance();
+
         /**
          * Tworzy nową grę dla podanej listy graczy.
          * Inicjalizuje talię, rozdaje karty i ustala pierwszą kartę na stosie.
@@ -303,6 +321,8 @@ public class UnoServer extends Thread {
             discardPile.add(firstCard);
             currentColor = firstCard.getKolor();
             currentValue = firstCard.getWartosc();
+
+            logger.info("Game created with players: " + players);
 
             while (firstCard.getWartosc().equals("+2") ||
                     firstCard.getWartosc().equals("⏸") ||
@@ -411,45 +431,31 @@ public class UnoServer extends Thread {
          * @return true jeśli karta została zagrana pomyślnie, false w przeciwnym razie
          */
         public boolean playCard(String player, Cart card) {
-            System.out.println("Game.playCard: gracz " + player + " próbuje zagrać " + card);
+            logger.debug("Game.playCard: player " + player + " trying to play " + card);
 
             if (!player.equals(players.get(currentPlayerIndex))) {
-                System.out.println("To nie jest tura gracza " + player);
+                logger.debug("Not player " + player + "'s turn");
                 return false;
             }
 
             Cart topCard = getTopCard();
             if (canPlayOn(card, topCard)) {
-                // Znajdź i usuń konkretną kartę z ręki gracza
                 List<Cart> playerHand = hands.get(player);
                 boolean removed = false;
 
-                // Debug: wypisz zawartość ręki przed usunięciem
-                System.out.println("Ręka przed usunięciem (" + player + "):");
-                for (Cart c : playerHand) {
-                    System.out.println("  " + c.toString());
-                }
-
-                // Znajdź kartę do usunięcia (porównując stringi, bo mogą być różne obiekty)
                 for (int i = 0; i < playerHand.size(); i++) {
                     Cart c = playerHand.get(i);
                     if (c.toString().equals(card.toString())) {
                         playerHand.remove(i);
                         removed = true;
-                        System.out.println("Usunięto kartę: " + card.toString() + " z pozycji " + i);
+                        logger.debug("Removed card: " + card.toString() + " from player " + player);
                         break;
                     }
                 }
 
                 if (!removed) {
-                    System.out.println("UWAGA: Nie znaleziono karty do usunięcia!");
+                    logger.warning("Card not found in player's hand: " + player);
                     return false;
-                }
-
-                // Debug: wypisz zawartość ręki po usunięciu
-                System.out.println("Ręka po usunięciu (" + player + "):");
-                for (Cart c : playerHand) {
-                    System.out.println("  " + c.toString());
                 }
 
                 discardPile.add(card);
@@ -457,10 +463,12 @@ public class UnoServer extends Thread {
                 currentValue = card.getWartosc();
 
                 handleSpecialCard(card);
+                logger.info("Player " + player + " played card: " + card);
 
                 nextPlayer();
                 return true;
             }
+            logger.debug("Card cannot be played: " + card);
             return false;
         }
 
@@ -538,7 +546,11 @@ public class UnoServer extends Thread {
          * @return true jeśli gracz wygrał, false w przeciwnym razie
          */
         public boolean hasPlayerWon(String player) {
-            return hands.get(player).isEmpty();
+            boolean won = hands.get(player).isEmpty();
+            if (won) {
+                logger.info("Player " + player + " has won the game!");
+            }
+            return won;
         }
 
         /**
@@ -586,6 +598,8 @@ public class UnoServer extends Thread {
         /** ID pokoju, w którym znajduje się gracz */
         private int currentRoomId = -1; // ID pokoju, w którym znajduje się gracz
 
+        private final Logger logger = Logger.getInstance();
+
         /**
          * Tworzy nowy handler dla klienta.
          *
@@ -610,11 +624,11 @@ public class UnoServer extends Thread {
                 String inputLine;
 
                 while ((inputLine = in.readLine()) != null) {
-                    System.out.println("Received from client " + (nickname != null ? nickname : "unknown") + ": " + inputLine);
+                    logger.debug("Received from client " + (nickname != null ? nickname : "unknown") + ": " + inputLine);
                     handleInput(inputLine);
                 }
             } catch (IOException e) {
-                System.out.println("Error handling client: " + e.getMessage());
+                logger.error(e, "Error handling client " + nickname);
             } finally {
                 cleanup();
             }
@@ -626,79 +640,84 @@ public class UnoServer extends Thread {
          * @param inputLine linia wejściowa od klienta
          */
         private void handleInput(String inputLine) {
-            if (inputLine.startsWith("LOGIN ")) {
-                handleLogin(inputLine.substring(6));
-            } else if (inputLine.startsWith("READY ")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
+            try {
+                if (inputLine.startsWith("LOGIN ")) {
+                    handleLogin(inputLine.substring(6));
+                } else if (inputLine.startsWith("READY ")) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    handleReady(inputLine.substring(6));
+                } else if (inputLine.startsWith("UNREADY ")) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    handleUnready(inputLine.substring(8));
+                } else if (inputLine.startsWith("EXIT ")) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    handleExit(inputLine.substring(5));
+                } else if (inputLine.startsWith("INIT_GAME ")) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    logger.info("Received game initialization from " + nickname);
+                    initialize_game();
+                } else if ("TOP5".equalsIgnoreCase(inputLine)) {
+                    String top5 = db.Top5_Best(conn);
+                    logger.debug("Top5 request from " + nickname);
+                    out.println("TOP5 " + top5);
+                } else if ("LIST".equalsIgnoreCase(inputLine)) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    broadcastUserList();
+                } else if ("ROOM_LIST".equalsIgnoreCase(inputLine)) {
+                    sendRoomList();
+                } else if (inputLine.startsWith("JOIN_ROOM ")) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    joinRoom(inputLine.substring(10));
+                } else if (inputLine.startsWith("CREATE_ROOM")) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    createRoom();
+                } else if (inputLine.startsWith("PLAY ")) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    handlePlay(inputLine.substring(5));
+                } else if (inputLine.equals("DRAW")) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    handleDraw();
+                } else if ("GET_GAME_STATE".equals(inputLine)) {
+                    if (nickname == null) {
+                        out.println("ERROR_NOT_LOGGED_IN");
+                        return;
+                    }
+                    sendGameState();
+                } else if ("quit".equalsIgnoreCase(inputLine)) {
+                    out.println("Bye bye!");
+                } else {
+                    out.println("Server received: " + inputLine);
                 }
-                handleReady(inputLine.substring(6));
-            } else if (inputLine.startsWith("UNREADY ")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                handleUnready(inputLine.substring(8));
-            } else if (inputLine.startsWith("EXIT ")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                handleExit(inputLine.substring(5));
-            } else if (inputLine.startsWith("INIT_GAME ")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                System.out.println("Otrzymano inicjalizację gry");
-                initialize_game();
-            } else if ("TOP5".equalsIgnoreCase(inputLine)) {
-                String top5 = db.Top5_Best(conn);
-                System.out.println(top5);
-                out.println("TOP5 " + top5);
-            } else if ("LIST".equalsIgnoreCase(inputLine)) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                broadcastUserList();
-            } else if ("ROOM_LIST".equalsIgnoreCase(inputLine)) {
-                sendRoomList();
-            } else if (inputLine.startsWith("JOIN_ROOM ")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                joinRoom(inputLine.substring(10));
-            } else if (inputLine.startsWith("CREATE_ROOM")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                createRoom();
-            } else if (inputLine.startsWith("PLAY ")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                handlePlay(inputLine.substring(5));
-            } else if (inputLine.equals("DRAW")) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                handleDraw();
-            } else if ("GET_GAME_STATE".equals(inputLine)) {
-                if (nickname == null) {
-                    out.println("ERROR_NOT_LOGGED_IN");
-                    return;
-                }
-                sendGameState();
-            } else if ("quit".equalsIgnoreCase(inputLine)) {
-                out.println("Bye bye!");
-            } else {
-                out.println("Server received: " + inputLine);
+            } catch (Exception e) {
+                logger.error(e, "Error handling input from " + nickname + ": " + inputLine);
+                out.println("ERROR Internal server error");
             }
         }
 
@@ -708,10 +727,10 @@ public class UnoServer extends Thread {
          * @param loginData dane logowania w formacie "username:password_hash"
          */
         private void handleLogin(String loginData) {
-            System.out.println("=== SERWER: ROZPOCZĘCIE LOGOWANIA ===");
+            logger.info("=== LOGIN ATTEMPT ===");
             String[] parts = loginData.split(":");
             if (parts.length != 2) {
-                System.out.println("Serwer: Nieprawidłowy format logowania: " + loginData);
+                logger.warning("Invalid login format: " + loginData);
                 out.println("LOGIN_ERROR Invalid format. Use: LOGIN username:password_hash");
                 return;
             }
@@ -719,26 +738,26 @@ public class UnoServer extends Thread {
             String username = parts[0];
             String passwordHash = parts[1];
 
-            System.out.println("Serwer: Próba logowania dla użytkownika: " + username);
+            logger.debug("Login attempt for user: " + username);
 
             if (connectedClients.containsKey(username)) {
-                System.out.println("Serwer: Użytkownik już połączony: " + username);
+                logger.warning("User already connected: " + username);
                 out.println("LOGIN_ERROR User already connected");
                 return;
             }
 
             boolean userExists = db.is_player(conn, username);
-            System.out.println("Serwer: Użytkownik istnieje w bazie: " + userExists);
+            logger.debug("User exists in database: " + userExists);
 
             if (!userExists) {
-                System.out.println("Serwer: Tworzenie nowego użytkownika: " + username);
+                logger.info("Creating new user: " + username);
                 boolean created = db.createUserIfNotExists(conn, username, passwordHash);
                 if (!created) {
-                    System.out.println("Serwer: Nie udało się utworzyć użytkownika");
+                    logger.error("Failed to create user: " + username);
                     out.println("LOGIN_ERROR Failed to create user");
                     return;
                 }
-                System.out.println("Serwer: Utworzono nowego użytkownika: " + username);
+                logger.info("New user created: " + username);
                 loginUser(username);
                 return;
             }
@@ -746,18 +765,18 @@ public class UnoServer extends Thread {
             String storedPasswordHash = db.getPasswordHash(conn, username);
 
             if (storedPasswordHash == null) {
-                System.out.println("Serwer: Nie znaleziono użytkownika w bazie");
+                logger.error("User not found in database: " + username);
                 out.println("LOGIN_ERROR User not found in database");
                 return;
             }
 
             if (!storedPasswordHash.equals(passwordHash)) {
-                System.out.println("Serwer: Błędne hasło dla użytkownika: " + username);
+                logger.warning("Invalid password for user: " + username);
                 out.println("LOGIN_ERROR Invalid password");
                 return;
             }
 
-            System.out.println("Serwer: Hasło poprawne, logowanie użytkownika: " + username);
+            logger.info("Login successful for user: " + username);
             loginUser(username);
         }
 
@@ -767,15 +786,12 @@ public class UnoServer extends Thread {
          * @param username nick użytkownika
          */
         private void loginUser(String username) {
-            System.out.println("Serwer: Logowanie użytkownika: " + username);
             this.nickname = username;
             connectedClients.put(username, this);
             clientStatus.put(username, "NOT_READY");
 
-            System.out.println("Serwer: Wysyłam LOGIN_SUCCESS do: " + username);
             out.println("LOGIN_SUCCESS " + username);
 
-            // Automatyczne przypisanie do dostępnego pokoju
             GameRoom room = findAvailableRoomForPlayer(username);
             currentRoomId = room.getRoomId();
             if (room.addPlayer(username)) {
@@ -784,7 +800,7 @@ public class UnoServer extends Thread {
                 broadcastUserListToRoom(currentRoomId);
             }
 
-            System.out.println("Serwer: Login zakończony pomyślnie dla: " + username);
+            logger.info("Login completed for: " + username);
         }
 
         /**
@@ -894,8 +910,8 @@ public class UnoServer extends Thread {
 
             clientStatus.put(nick, "READY");
             broadcastToRoom(currentRoomId, "READY " + nick);
+            logger.info("Player " + nick + " is ready in room " + currentRoomId);
 
-            // Sprawdź czy wszyscy w pokoju są gotowi
             boolean allReady = true;
             int readyCount = 0;
             for (String player : room.getPlayers()) {
@@ -907,6 +923,7 @@ public class UnoServer extends Thread {
             }
 
             if (allReady && readyCount >= 2 && readyCount <= 4) {
+                logger.info("All players ready in room " + currentRoomId + ", starting game");
                 broadcastToRoom(currentRoomId, "START_GAME");
                 room.startGame();
             }
@@ -930,6 +947,7 @@ public class UnoServer extends Thread {
 
             clientStatus.put(nick, "NOT_READY");
             broadcastToRoom(currentRoomId, "UNREADY " + nick);
+            logger.info("Player " + nick + " is not ready in room " + currentRoomId);
         }
 
         /**
@@ -950,6 +968,7 @@ public class UnoServer extends Thread {
                     broadcastToRoom(currentRoomId, "USER_LEFT " + nick);
                     if (room.isEmpty()) {
                         gameRooms.remove(currentRoomId);
+                        logger.info("Room " + currentRoomId + " removed (empty)");
                     } else {
                         broadcastUserListToRoom(currentRoomId);
                     }
@@ -958,7 +977,9 @@ public class UnoServer extends Thread {
 
             connectedClients.remove(nick);
             clientStatus.remove(nick);
+            logger.info("Player " + nick + " exited");
         }
+
 
         /**
          * Inicjalizuje grę i wysyła stan początkowej gry do wszystkich graczy w pokoju.
@@ -1036,35 +1057,29 @@ public class UnoServer extends Thread {
             }
 
             try {
-                System.out.println("Próba zagrania karty: " + cardStr + " przez gracza: " + nickname);
+                logger.debug("Attempting to play card: " + cardStr + " by player: " + nickname);
                 Cart card = Cart.fromString(cardStr);
 
                 boolean success = currentGame.playCard(nickname, card);
 
                 if (success) {
-                    System.out.println("Karta zagrana pomyślnie przez: " + nickname);
+                    logger.info("Card played successfully by: " + nickname);
 
                     Cart topCard = currentGame.getTopCard();
                     String currentPlayer = currentGame.getCurrentPlayer();
 
-                    // Sprawdź czy ktoś wygrał
                     if (currentGame.hasPlayerWon(nickname)) {
-                        System.out.println("Gracz " + nickname + " wygrał grę!");
+                        logger.info("Player " + nickname + " won the game!");
                         db.increaseWins(conn, nickname);
 
-                        // Wyślij informację o zwycięzcy do wszystkich graczy w pokoju
                         broadcastToRoom(currentRoomId, "WINNER " + nickname);
-
-                        // Zakończ grę w pokoju
                         room.endGame();
                         return;
                     }
 
-                    // Budujemy wiadomość dla KAŻDEGO gracza INDYWIDUALNIE
                     for (String player : currentGame.getPlayers()) {
                         ClientHandler client = connectedClients.get(player);
                         if (client != null) {
-                            // Lista przeciwników z liczbą kart
                             StringBuilder opponentsStr = new StringBuilder();
                             List<String> playersList = currentGame.getPlayers();
                             for (String p : playersList) {
@@ -1077,7 +1092,6 @@ public class UnoServer extends Thread {
                                 }
                             }
 
-                            // Ręka BIEŻĄCEGO gracza
                             List<Cart> hand = currentGame.getHandForPlayer(player);
                             StringBuilder handStr = new StringBuilder();
                             for (int i = 0; i < hand.size(); i++) {
@@ -1093,17 +1107,17 @@ public class UnoServer extends Thread {
                                     opponentsStr.toString(),
                                     handStr.toString());
 
-                            System.out.println("Wysyłam do gracza " + player + ": " + message);
                             client.out.println(message);
                         }
                     }
 
                 } else {
+                    logger.debug("Cannot play card: " + cardStr);
                     out.println("ERROR Nie można zagrać tej karty");
                     out.println("TURN " + currentGame.getCurrentPlayer());
                 }
             } catch (Exception e) {
-                System.out.println("Błąd w handlePlay: " + e.getMessage());
+                logger.error(e, "Error in handlePlay for player " + nickname);
                 out.println("ERROR Nieprawidłowy format karty");
                 out.println("TURN " + currentGame.getCurrentPlayer());
             }
@@ -1131,15 +1145,16 @@ public class UnoServer extends Thread {
             }
 
             if (!nickname.equals(currentGame.getCurrentPlayer())) {
+                logger.debug("Not player's turn: " + nickname);
                 out.println("ERROR Not your turn");
                 return;
             }
 
             Cart drawnCard = currentGame.drawCardForPlayer(nickname);
             if (drawnCard != null) {
+                logger.debug("Player " + nickname + " drew a card");
                 out.println("DREW " + drawnCard.toString());
 
-                // Wyślij zaktualizowaną rękę do gracza, który dobrał kartę
                 List<Cart> hand = currentGame.getHandForPlayer(nickname);
                 StringBuilder handStr = new StringBuilder("HAND ");
                 for (int i = 0; i < hand.size(); i++) {
@@ -1148,15 +1163,11 @@ public class UnoServer extends Thread {
                 }
                 out.println(handStr.toString());
 
-                // Przejdź do następnego gracza
                 currentGame.nextPlayer();
-
-                // Powiadom wszystkich graczy w pokoju o zmianie tury
                 broadcastToRoom(currentRoomId, "TURN " + currentGame.getCurrentPlayer());
-
-                // Wyślij zaktualizowane informacje o rękach wszystkich graczy w pokoju
                 updateAllPlayerHandsInRoom();
             } else {
+                logger.warning("No cards to draw for player " + nickname);
                 out.println("ERROR No cards to draw");
             }
         }
@@ -1298,7 +1309,6 @@ public class UnoServer extends Thread {
          */
         private void cleanup() {
             if (nickname != null) {
-                // Usuń gracza z pokoju
                 if (currentRoomId != -1) {
                     GameRoom room = gameRooms.get(currentRoomId);
                     if (room != null) {
@@ -1306,6 +1316,7 @@ public class UnoServer extends Thread {
                         broadcastToRoom(currentRoomId, "USER_LEFT " + nickname);
                         if (room.isEmpty()) {
                             gameRooms.remove(currentRoomId);
+                            logger.info("Room " + currentRoomId + " removed (empty after cleanup)");
                         } else {
                             broadcastUserListToRoom(currentRoomId);
                         }
@@ -1314,14 +1325,15 @@ public class UnoServer extends Thread {
 
                 connectedClients.remove(nickname);
                 clientStatus.remove(nickname);
+                logger.info("Client disconnected: " + nickname);
             }
             try {
                 if (in != null) in.close();
                 if (out != null) out.close();
                 if (clientSocket != null) clientSocket.close();
-                System.out.println("Connection with client closed");
+                logger.debug("Client socket closed");
             } catch (IOException e) {
-                System.out.println("Error closing socket: " + e.getMessage());
+                logger.error(e, "Error closing socket");
             }
         }
     }

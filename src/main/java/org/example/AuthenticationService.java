@@ -38,23 +38,30 @@ public class AuthenticationService {
      * // hashed = "1a79a4d60de6718e8e5b326e338ae533"
      * }</pre>
      */
-    public String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            byte[] hashBytes = md.digest(password.getBytes());
+        private final Logger logger = Logger.getInstance();
 
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hashBytes) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
+        /**
+         * Haszuje podane hasło przy użyciu algorytmu MD5...
+         */
+        public String hashPassword(String password) {
+            try {
+                MessageDigest md = MessageDigest.getInstance("MD5");
+                byte[] hashBytes = md.digest(password.getBytes());
+
+                StringBuilder hexString = new StringBuilder();
+                for (byte b : hashBytes) {
+                    String hex = Integer.toHexString(0xff & b);
+                    if (hex.length() == 1) {
+                        hexString.append('0');
+                    }
+                    hexString.append(hex);
                 }
-                hexString.append(hex);
+
+                logger.debug("Password hashed successfully");
+                return hexString.toString();
+            } catch (NoSuchAlgorithmException e) {
+                logger.error(e, "MD5 hashing error");
+                return password; // W ostateczności zwróć niezhashowane hasło
             }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            System.err.println("Błąd hashowania MD5: " + e.getMessage());
-            return password; // W ostateczności zwróć niezhashowane hasło
         }
     }
-}

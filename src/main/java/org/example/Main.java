@@ -24,6 +24,12 @@ public class Main {
      * @param args argumenty wiersza poleceń (niewykorzystywane w tej implementacji)
      */
     public static void main(String[] args) {
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            Logger.getInstance().info("Server shutting down");
+            Logger.getInstance().shutdown();
+        }));
+
         UnoServer server = new UnoServer();
         server.start();
     }

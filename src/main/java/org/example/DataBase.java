@@ -16,17 +16,18 @@ public class DataBase {
      * @param dbPath ścieżka do pliku bazy danych SQLite
      * @return obiekt Connection reprezentujący połączenie z bazą danych lub null w przypadku błędu
      */
+
+    private final Logger logger = Logger.getInstance();
     public Connection connect(String dbPath) {
         Connection conn = null;
         try {
             String url = "jdbc:sqlite:" + dbPath;
             conn = DriverManager.getConnection(url);
-            System.out.println("Connection to SQLite established.");
+            logger.info("Connection to SQLite established: " + dbPath);
 
-            // Tworzenie tabeli z hasłem jeśli nie istnieje
             createTableWithPassword(conn);
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            logger.error(e, "Database connection error");
         }
         return conn;
     }
@@ -46,7 +47,7 @@ public class DataBase {
                 "liczba_wygranych INTEGER DEFAULT 0)";
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
-            System.out.println("Tabela gracz została utworzona/zweryfikowana");
+            logger.info("Table 'gracz' created/verified");
         }
     }
 
@@ -70,7 +71,7 @@ public class DataBase {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Błąd przy sprawdzaniu gracza: " + e.getMessage());
+            logger.error(e, "Error checking player: " + name);
         }
 
         return false;
@@ -95,7 +96,7 @@ public class DataBase {
                 }
             }
         } catch (SQLException e) {
-            System.out.println("Błąd przy pobieraniu hasła: " + e.getMessage());
+            logger.error(e, "Error retrieving password for: " + username);
         }
 
         return null;
@@ -119,15 +120,15 @@ public class DataBase {
             int affectedRows = pstmt.executeUpdate();
 
             if (affectedRows > 0) {
-                System.out.println("Utworzono nowego użytkownika: " + name);
+                logger.info("Created new user: " + name);
                 return true;
             } else {
-                System.out.println("Użytkownik " + name + " już istnieje");
+                logger.info("User already exists: " + name);
                 return false;
             }
 
         } catch (SQLException e) {
-            System.out.println("Błąd przy dodawaniu gracza: " + e.getMessage());
+            logger.error(e, "Error adding player: " + name);
             return false;
         }
     }
@@ -140,7 +141,7 @@ public class DataBase {
      * @param name nazwa nowego gracza
      */
     public void Insert_User(Connection conn, String name) {
-        Insert_User(conn, name, ""); // Domyślne puste hasło
+        Insert_User(conn, name, "");
     }
 
     /**
@@ -159,12 +160,12 @@ public class DataBase {
                 pstmt.setString(1, name);
                 pstmt.setString(2, passwordHash);
                 pstmt.executeUpdate();
-                System.out.println("Dodano gracza " + name + " z hasłem");
+                logger.info("Added player " + name + " with password");
             } catch (SQLException e) {
-                System.out.println("Błąd przy dodawaniu gracza: " + e.getMessage());
+                logger.error(e, "Error adding player: " + name);
             }
         } else {
-            System.out.println("Gracz " + name + " już istnieje w bazie");
+            logger.info("Player " + name + " already exists in database");
         }
     }
 
@@ -181,12 +182,12 @@ public class DataBase {
             int affectedRows = pstmt.executeUpdate();
 
             if (affectedRows > 0) {
-                System.out.println("Dodano 1 do " + name);
+                logger.info("Added 1 win to " + name);
             } else {
-                System.out.println(name+ "-> nie ma go w bazie danych");
+                logger.warning(name + " not found in database when increasing wins");
             }
         } catch (SQLException e) {
-            System.out.println("Błąd przy zwiększaniu liczby wygranych: " + e.getMessage());
+            logger.error(e, "Error increasing wins for: " + name);
         }
     }
 
@@ -216,8 +217,8 @@ public class DataBase {
                 result.append("Brak danych o graczach.");
             }
         } catch (SQLException e) {
+            logger.error(e, "Error retrieving top 5 players");
             result.append("Błąd podczas pobierania danych: ").append(e.getMessage());
-            e.printStackTrace();
         }
         return result.toString();
     }
